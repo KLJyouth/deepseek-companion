@@ -54,6 +54,14 @@ function write_env_file($data) {
 
 function import_sql($mysqli, $file) {
     $sql = file_get_contents($file);
+    // 只为没有 IF NOT EXISTS 的 CREATE TABLE 添加 IF NOT EXISTS
+    $sql = preg_replace_callback(
+        '/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/i',
+        function($matches) {
+            return 'CREATE TABLE IF NOT EXISTS ';
+        },
+        $sql
+    );
     $queries = array_filter(array_map('trim', explode(';', $sql)));
     foreach ($queries as $query) {
         if ($query) $mysqli->query($query);
@@ -131,7 +139,7 @@ function render_form($error = '', $success = '', $defaults = []) {
                         <label>管理员密码</label>
                         <input type="password" name="ADMIN_PASSWORD" class="form-control" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 mt-3">开始安装</button>
+                    <button type="submit" class="btn btn-primary w-100 mt-3">开始安装并初始化</button>
                 </form>
             </div>
         </div>
