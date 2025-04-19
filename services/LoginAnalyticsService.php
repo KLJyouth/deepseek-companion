@@ -2,6 +2,7 @@
 namespace Services;
 
 use Libs\DatabaseHelper;
+use Services\DeviceManagementService;
 
 class LoginAnalyticsService {
     private $db;
@@ -14,10 +15,10 @@ class LoginAnalyticsService {
     
     public function analyzeLoginPattern($userId, $location) {
         $patterns = $this->db->getRows(
-            "SELECT login_time, ip_address, location 
+            "SELECT created_at as login_time, ip_address, location_country, location_city 
              FROM login_attempts 
              WHERE user_id = ? AND success = 1 
-             ORDER BY login_time DESC LIMIT 10",
+             ORDER BY created_at DESC LIMIT 10",
             [['value' => $userId, 'type' => 'i']]
         );
         
@@ -43,12 +44,23 @@ class LoginAnalyticsService {
     }
     
     private function isUnusualLoginTime($patterns) {
-        // 实现登录时间模式分析逻辑
-        return false;
+        // 简单实现：如果最近一次登录时间与历史平均时间段偏差较大
+        if (count($patterns) < 2) return false;
+        $times = array_map(fn($p) => strtotime($p['login_time']), $patterns);
+        $avg = array_sum($times) / count($times);
+        $last = $times[0];
+        return abs($last - $avg) > 4 * 3600; // 超过4小时偏差
     }
     
     private function isLocationJump($patterns, $currentLocation) {
-        // 实现地理位置跳变检测逻辑
-        return false;
+        // 简单实现：如果当前地理位置与历史位置不同
+        if (empty($currentLocation['location_country']) || empty($currentLocation['location_city'])) return false;
+        foreach ($patterns as $p) {
+            if ($p['location_country'] === $currentLocation['location_country'] &&
+                $p['location_city'] === $currentLocation['location_city']) {
+                return false;
+            }
+        }
+        return true;
     }
 }

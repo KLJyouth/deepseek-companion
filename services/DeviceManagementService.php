@@ -24,11 +24,17 @@ class DeviceManagementService {
     }
 
     public function validateDeviceFingerprint(string $username, string $fingerprint): bool {
-        $knownDevices = $this->dbHelper->getRows(
-            "SELECT fingerprint FROM user_devices WHERE username = ? AND trusted = 1",
-            [['value' => $username, 'encrypt' => false]]
+        // 兼容ac_users和users表
+        $user = $this->dbHelper->getRow(
+            "SELECT id FROM ac_users WHERE username = ? UNION SELECT id FROM users WHERE username = ? LIMIT 1",
+            [['value' => $username, 'encrypt' => false], ['value' => $username, 'encrypt' => false]]
         );
-        
+        if (!$user) return false;
+        $userId = $user['id'];
+        $knownDevices = $this->dbHelper->getRows(
+            "SELECT fingerprint FROM user_devices WHERE user_id = ? AND trusted = 1",
+            [['value' => $userId, 'type' => 'i']]
+        );
         return in_array($fingerprint, array_column($knownDevices, 'fingerprint'));
     }
 
@@ -36,8 +42,8 @@ class DeviceManagementService {
         try {
             $record = $this->geoipReader->city($ip);
             return [
-                'country' => $record->country->name,
-                'city' => $record->city->name,
+                'location_country' => $record->country->name,
+                'location_city' => $record->city->name,
                 'latitude' => $record->location->latitude,
                 'longitude' => $record->location->longitude
             ];
@@ -50,26 +56,23 @@ class DeviceManagementService {
         if (empty($location)) {
             return false;
         }
-
         $lastLogin = $this->dbHelper->getRow(
             "SELECT location_country, location_city FROM login_attempts 
              WHERE username = ? AND success = 1 
-             ORDER BY attempt_time DESC LIMIT 1",
+             ORDER BY created_at DESC LIMIT 1",
             [['value' => $username, 'encrypt' => false]]
         );
-
         return $lastLogin && 
-               ($lastLogin['location_country'] !== $location['country'] ||
-                $lastLogin['location_city'] !== $location['city']);
+               ($lastLogin['location_country'] !== $location['location_country'] ||
+                $lastLogin['location_city'] !== $location['location_city']);
     }
 
     public function sendUnknownDeviceAlert(string $username): void {
-        // 实现发送邮件通知的逻辑
+        // 兼容ac_users和users表
         $user = $this->dbHelper->getRow(
-            "SELECT email FROM users WHERE username = ?",
-            [['value' => $username, 'encrypt' => false]]
+            "SELECT email FROM ac_users WHERE username = ? UNION SELECT email FROM users WHERE username = ? LIMIT 1",
+            [['value' => $username, 'encrypt' => false], ['value' => $username, 'encrypt' => false]]
         );
-        
         if ($user && $user['email']) {
             // TODO: 实现邮件发送逻辑
             mail(

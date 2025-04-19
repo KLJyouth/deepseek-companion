@@ -13,22 +13,25 @@ use \Throwable;
  */
 final class DatabaseHelper {
     private static ?self $instance = null;
-    private static string $tablePrefix = 'ac_';
-    private \mysqli $conn;
     private string $tablePrefix;
+    private \mysqli $conn;
 
-    private function __construct() {
+    private function __construct(\mysqli $conn = null, string $prefix = 'ac_') {
         // 初始化数据库连接
-        $this->conn = new \mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        if ($conn) {
+            $this->conn = $conn;
+        } else {
+            $this->conn = new \mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        }
         if ($this->conn->connect_error) {
             throw new Exception("Database connection failed: " . $this->conn->connect_error);
         }
         $this->conn->set_charset(DB_CHARSET);
-        $this->tablePrefix = defined('DB_TABLE_PREFIX') ? DB_TABLE_PREFIX : self::$tablePrefix;
+        $this->tablePrefix = defined('DB_TABLE_PREFIX') ? DB_TABLE_PREFIX : $prefix;
     }
 
     public static function setTablePrefix(string $prefix): void {
-        self::$tablePrefix = $prefix;
+        // 仅用于兼容性，建议用实例属性
     }
 
     public static function getInstance(): self {
@@ -78,11 +81,7 @@ SQL;
     // 执行修复操作
     public function executeRepair($level) {
         $this->conn->query("CALL ac_self_healing_level$level()");
-        OperationLog::log(
-            $_SESSION['admin_id'] ?? 0,
-            '数据库修复',
-            ['level' => $level, 'status' => 'completed']
-        );
+        error_log('数据库修复: ' . json_encode(['level' => $level, 'status' => 'completed']));
     }
     
     /**
@@ -92,7 +91,7 @@ SQL;
         $this->conn->query("SET GLOBAL innodb_force_recovery = 6");
         $this->executeRepair(3);
         $this->conn->query("ANALYZE TABLE ac_critical_tables");
-        SecurityAuditHelper::audit('database_repair', '执行L3级深度修复');
+        error_log('执行L3级深度修复');
     }
 
     /**
@@ -277,12 +276,17 @@ SQL;
         // 定义需要加密的字段
         $sensitiveColumns = [
             'users' => ['password', 'email', 'remember_token', 'tfa_secret', 'biometric_data'],
+            'ac_users' => ['password', 'email', 'remember_token', 'tfa_secret', 'biometric_data'],
             'messages' => ['content'],
             'api_usage' => ['endpoint']
         ];
-        
-        return isset($sensitiveColumns[$table]) && 
-               in_array($column, $sensitiveColumns[$table]);
+        // 兼容表前缀
+        $tableKey = $table;
+        if (strpos($table, $this->tablePrefix) === 0) {
+            $tableKey = substr($table, strlen($this->tablePrefix));
+        }
+        return isset($sensitiveColumns[$tableKey]) && 
+               in_array($column, $sensitiveColumns[$tableKey]);
     }
 
     /**

@@ -31,7 +31,7 @@ class BiometricMiddleware {
             }
 
             // 获取用户生物识别数据
-            $user = $this->dbHelper->getUserById($request['user_id']);
+            $user = $this->dbHelper->getRow("SELECT * FROM users WHERE id = ?", [['value' => $request['user_id'], 'type' => 'i']]);
             if (empty($user['biometric_data'])) {
                 throw new Exception('用户未注册生物识别');
             }

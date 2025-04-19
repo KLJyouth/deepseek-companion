@@ -27,8 +27,11 @@ class RateLimitService {
         'concurrent' => 0.5
     ];
     
+    private $monitor;
+    
     public function __construct() {
         $this->cache = CacheHelper::getInstance();
+        $this->monitor = new SystemMonitorService();
     }
     
     /**
@@ -101,19 +104,12 @@ class RateLimitService {
     }
     
     private function getSystemLoad(): array {
-        // 获取系统负载指标
+        $cpuCores = function_exists('sysconf') && defined('_SC_NPROCESSORS_ONLN') ? sysconf(_SC_NPROCESSORS_ONLN) : 1;
         return [
-            'cpu' => sys_getloadavg()[0] / sysconf(_SC_NPROCESSORS_ONLN),
-            'memory' => 1 - (memory_get_usage(true) / memory_get_usage(false)),
-            'concurrent' => $this->getConcurrentRequests() / 100 // 假设100并发为基准
+            'cpu' => sys_getloadavg()[0] / max(1, $cpuCores),
+            'memory' => 1 - (memory_get_usage(true) / max(1, memory_get_usage(false))),
+            'concurrent' => $this->getConcurrentRequests() / 100
         ];
-    }
-    
-    private $monitor;
-    
-    public function __construct() {
-        $this->cache = CacheHelper::getInstance();
-        $this->monitor = new SystemMonitorService();
     }
     
     private function getConcurrentRequests(): int {

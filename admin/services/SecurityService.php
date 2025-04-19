@@ -5,7 +5,8 @@ use Libs\CryptoHelper;
 use Libs\DatabaseHelper;
 use Libs\Exception\SecurityException;
 use Libs\SecurityManager;
-use Admin\Services\OperationLog;
+// 日志替代
+use error_log;
 
 class SecurityService
 {
@@ -39,22 +40,17 @@ class SecurityService
         // 深度防御规则加载
         $this->loadL3DefenseRules();
         
-        OperationLog::log(
-            $_SESSION['admin_id'],
-            '安全系统',
-            ['action' => 'WAF启用', 'config' => $config]
-        );
+        // 日志替代
+        error_log('WAF启用: ' . json_encode($config));
     }
 
     private function loadL3DefenseRules() {
         // 加载L3级防御规则库
-        $rules = DatabaseHelper::getInstance()->query(
+        $rules = DatabaseHelper::getInstance()->getRows(
             "SELECT * FROM defense_rules WHERE level = 3 ORDER BY priority DESC"
         );
-        
-        SecurityAuditHelper::audit('defense_rules', 
-            '加载深度防御规则'.count($rules).'条'
-        );
+        // 日志替代
+        error_log('加载深度防御规则'.count($rules).'条');
     }
 
     public function detectIntrusion($payload) {
@@ -89,16 +85,14 @@ class SecurityService
         $feed = file_get_contents(self::THREAT_API."?key=".getenv('THREAT_API_KEY'));
         $data = json_decode($feed, true);
 
-        DatabaseHelper::getInstance()->batchInsert(
-            'threat_intelligence',
-            ['type', 'signature', 'severity'],
-            array_map(function($item) {
-                return [
-                    $item['category'],
-                    base64_encode($item['pattern']),
-                    $item['risk_level']
-                ];
-            }, $data['results'])
-        );
+        // 用循环插入代替batchInsert
+        $db = DatabaseHelper::getInstance();
+        foreach ($data['results'] as $item) {
+            $db->insert('threat_intelligence', [
+                'type' => $item['category'],
+                'signature' => base64_encode($item['pattern']),
+                'severity' => $item['risk_level']
+            ]);
+        }
     }
 }
