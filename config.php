@@ -8,6 +8,16 @@ namespace Libs;
 
 define('ROOT_PATH', realpath(__DIR__));
 
+// ========== 加载.env支持 ==========
+if (file_exists(__DIR__ . '/.env')) {
+    $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
+        [$k, $v] = explode('=', $line, 2);
+        if (!getenv($k)) putenv("$k=$v");
+    }
+}
+
 // ==================== 基础配置 ====================
 // 环境检测 - 优先使用环境变量
 // $env variable removed, using getenv('APP_ENV') directly
