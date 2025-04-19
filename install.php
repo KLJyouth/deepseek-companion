@@ -62,6 +62,8 @@ function import_sql($mysqli, $file) {
         },
         $sql
     );
+    // 将所有 CREATE VIEW 替换为 CREATE OR REPLACE VIEW，避免视图已存在报错
+    $sql = preg_replace('/CREATE\s+VIEW\s+/i', 'CREATE OR REPLACE VIEW ', $sql);
     $queries = array_filter(array_map('trim', explode(';', $sql)));
     foreach ($queries as $query) {
         if ($query) $mysqli->query($query);
