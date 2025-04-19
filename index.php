@@ -16,6 +16,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
     <style>
         .hero-section {
             background: linear-gradient(135deg, #1e88e5, #0d47a1);
@@ -86,18 +87,67 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
     </nav>
 
     <!-- 主展示区 -->
-    <section class="hero-section text-center">
-        <div class="container">
-            <h1 class="display-4 fw-bold mb-4">您的智能AI伴侣</h1>
-            <p class="lead mb-5">全天候陪伴，个性化交流，让科技温暖您的生活</p>
-            <?php if (!$isLoggedIn): ?>
-                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
-                    <a href="login.php" class="btn btn-primary btn-lg px-4 gap-3">立即体验</a>
-                    <a href="#features" class="btn btn-outline-light btn-lg px-4">了解更多</a>
+    <section class="hero-section position-relative overflow-hidden">
+        <div id="globe-container" class="position-absolute w-100 h-100"></div>
+        <div class="container position-relative z-index-1">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center">
+                    <h1 class="display-3 fw-bold mb-4">您的智能AI伴侣</h1>
+                    <p class="lead mb-5">全天候陪伴，个性化交流，让科技温暖您的生活</p>
+                    <?php if (!$isLoggedIn): ?>
+                        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
+                            <a href="login.php" class="btn btn-primary btn-lg px-4 gap-3">立即体验</a>
+                            <a href="#features" class="btn btn-outline-light btn-lg px-4">了解更多</a>
+                        </div>
+                    <?php else: ?>
+                        <a href="chat.php" class="btn btn-light btn-lg px-4">开始聊天</a>
+                    <?php endif; ?>
                 </div>
-            <?php else: ?>
-                <a href="chat.php" class="btn btn-light btn-lg px-4">开始聊天</a>
-            <?php endif; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- 数据卡片 -->
+    <section class="py-5 bg-dark bg-opacity-75 position-relative z-index-1">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary bg-opacity-10 border-primary">
+                        <div class="card-body text-center">
+                            <h3 class="card-title"><i class="bi bi-globe"></i> 全球节点</h3>
+                            <div class="display-4 fw-bold" id="node-count">12</div>
+                            <p class="mb-0">覆盖5大洲</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success bg-opacity-10 border-success">
+                        <div class="card-body text-center">
+                            <h3 class="card-title"><i class="bi bi-people"></i> 用户数量</h3>
+                            <div class="display-4 fw-bold" id="user-count">0</div>
+                            <p class="mb-0">全球用户</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info bg-opacity-10 border-info">
+                        <div class="card-body text-center">
+                            <h3 class="card-title"><i class="bi bi-lightning"></i> 实时请求</h3>
+                            <div class="display-4 fw-bold" id="request-count">0</div>
+                            <p class="mb-0">次/分钟</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning bg-opacity-10 border-warning">
+                        <div class="card-body text-center">
+                            <h3 class="card-title"><i class="bi bi-shield-check"></i> 安全运行</h3>
+                            <div class="display-4 fw-bold" id="uptime">99.99%</div>
+                            <p class="mb-0">服务可用性</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 

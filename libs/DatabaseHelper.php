@@ -1,22 +1,27 @@
 <?php
+declare(strict_types=1);
+
 namespace Libs;
 
 require_once __DIR__ . '/CryptoHelper.php';
 use Libs\CryptoHelper;
 use \Exception;
+use \Throwable;
 
 /**
  * 安全数据库操作类
  */
-class DatabaseHelper {
-    private static $instance = null;
-    private static $tablePrefix = 'ac_';
+final class DatabaseHelper {
+    private static ?self $instance = null;
+    private static string $tablePrefix = 'ac_';
+    private \mysqli $conn;
+    private string $tablePrefix;
 
     private function __construct() {
         // 初始化数据库连接
         $this->conn = new \mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
         if ($this->conn->connect_error) {
-            throw new \Exception("Database connection failed: " . $this->conn->connect_error);
+            throw new Exception("Database connection failed: " . $this->conn->connect_error);
         }
         $this->conn->set_charset(DB_CHARSET);
         $this->tablePrefix = defined('DB_TABLE_PREFIX') ? DB_TABLE_PREFIX : self::$tablePrefix;
@@ -26,7 +31,7 @@ class DatabaseHelper {
         self::$tablePrefix = $prefix;
     }
 
-    public static function getInstance() {
+    public static function getInstance(): self {
         if (self::$instance === null) {
             self::$instance = new self();
         }
@@ -34,9 +39,6 @@ class DatabaseHelper {
     }
 
     private function __clone() {}
-
-    private $conn;
-    private $tablePrefix;
 
     // 新增数据库修复功能
     public function addRepairProcedure() {
@@ -67,7 +69,7 @@ SQL;
             $this->conn->query("SELECT * FROM schema_versions WHERE version = '$version' FOR UPDATE");
             $this->conn->query("LOAD DATA INFILE 'backup_$version.sql' INTO TABLE schema_versions");
             $this->conn->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->conn->rollback();
             throw new \Exception("版本回滚失败: ".$e->getMessage());
         }

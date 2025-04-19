@@ -1,47 +1,66 @@
 <?php
+declare(strict_types=1);
+
 namespace Libs;
 
 require_once __DIR__ . '/CryptoHelper.php';
 require_once __DIR__ . '/DatabaseHelper.php';
 
-class Bootstrap {
+#[AllowDynamicProperties]
+final class Bootstrap {
     const MODE_PRIMARY = 'primary';
     const MODE_FALLBACK = 'fallback';
-    
-    private static $initStages = [
+
+    private static \Services\SystemMonitorService $monitor;
+    private static array $initStages = [
         'preflight',
         'dependencyCheck',
         'configValidation',
         'dbConnection',
         'cryptoInit',
-        'middlewares'
+        'initSystemMonitor',
+        'middlewares',
+        'webSocket'
     ];
 
-    public static function initialize() {
+    /** @var mixed 应用实例（如Slim\App等） */
+    private static $app = null;
+
+    /**
+     * 注入应用实例
+     * @param mixed $app
+     */
+    public static function setApp($app): void {
+        self::$app = $app;
+    }
+
+    public static function initialize(): void {
         try {
             self::runInitialization(self::MODE_PRIMARY);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             error_log('主模式初始化失败: '.$e->getMessage());
             self::handleFallbackMode($e);
         }
     }
 
-    public static function validateSSLCertificates($sslConfig) {
-        $missing = array_filter($sslConfig, function($file) {
-            return !file_exists($file);
-        });
+    /**
+     * @param array{cert:string,key:string,ca?:string} $sslConfig
+     */
+    public static function validateSSLCertificates(array $sslConfig): bool {
+        $missing = array_filter($sslConfig, fn($file) => !file_exists($file));
         
-        if(!empty($missing)) {
+        if($missing) {
             error_log('缺失的SSL文件: ' . implode(', ', array_keys($missing)));
             return false;
         }
+        
         return openssl_x509_check_private_key(
             file_get_contents($sslConfig['cert']),
             file_get_contents($sslConfig['key'])
         );
     }
 
-    private static function runInitialization($mode) {
+    private static function runInitialization(string $mode): void {
         foreach (self::$initStages as $stage) {
             $method = 'stage'.ucfirst($stage);
             if (!self::$method($mode)) {
@@ -117,54 +136,78 @@ class Bootstrap {
         try {
             // 详细记录加密配置
             error_log('[CRYPTO INIT] 开始加密初始化');
-            error_log('[CRYPTO INIT] ENCRYPTION_KEY长度: '.(defined('ENCRYPTION_KEY') ? strlen(ENCRYPTION_KEY) : '未定义'));
-            error_log('[CRYPTO INIT] ENCRYPTION_IV长度: '.(defined('ENCRYPTION_IV') ? strlen(ENCRYPTION_IV) : '未定义'));
+            error_log('[CRYPTO INIT] 加密方法: '.(defined('ENCRYPTION_METHOD') ? ENCRYPTION_METHOD : '未定义'));
 
+            if (defined('ENCRYPTION_METHOD') && ENCRYPTION_METHOD === 'quantum') {
+                error_log('[CRYPTO INIT] 正在初始化量子加密...');
+                try {
+                    require_once __DIR__ . '/QuantumCryptoHelper.php';
+                    QuantumCryptoHelper::init();
+                    
+                    // 量子加密健康检查
+                    $testData = 'health_check_'.microtime(true);
+                    $encrypted = QuantumCryptoHelper::encrypt($testData);
+                    $decrypted = QuantumCryptoHelper::decrypt($encrypted);
+                    
+                    if ($decrypted !== $testData) {
+                        throw new \Exception('量子加密验证失败');
+                    }
+                    
+                    error_log('[CRYPTO INIT] 量子加密初始化成功');
+                    return true;
+                } catch (\Exception $e) {
+                    error_log('[CRYPTO INIT] 量子加密初始化失败(尝试传统加密): '.$e->getMessage());
+                    // 继续尝试传统加密
+                }
+            }
+
+            // 传统加密初始化
+            error_log('[CRYPTO INIT] 正在初始化传统加密...');
             if (!defined('ENCRYPTION_KEY') || strlen(ENCRYPTION_KEY) !== 32) {
                 $msg = "ENCRYPTION_KEY必须为32字节，当前长度: ".(defined('ENCRYPTION_KEY') ? strlen(ENCRYPTION_KEY) : '未定义');
                 error_log('[CRYPTO INIT] '.$msg);
-                return true; // 降级运行，不再抛出异常
+                return true; // 降级运行
             }
             if (!defined('ENCRYPTION_IV') || strlen(ENCRYPTION_IV) !== 16) {
                 $msg = "ENCRYPTION_IV必须为16字节，当前长度: ".(defined('ENCRYPTION_IV') ? strlen(ENCRYPTION_IV) : '未定义');
                 error_log('[CRYPTO INIT] '.$msg);
-                return true; // 降级运行，不再抛出异常
+                return true; // 降级运行
             }
 
-            // 尝试初始化加密模块
-            error_log('[CRYPTO INIT] 正在初始化加密模块...');
             try {
                 CryptoHelper::init(ENCRYPTION_KEY, ENCRYPTION_IV);
                 
-                // 执行加密健康检查
-                error_log('[CRYPTO INIT] 正在执行加密健康检查...');
+                // 传统加密健康检查
                 $health = CryptoHelper::healthCheck();
-                error_log('[CRYPTO INIT] 健康检查结果: '.print_r($health, true));
+                error_log('[CRYPTO INIT] 传统加密健康检查结果: '.print_r($health, true));
                 
                 if ($health['status'] !== 'healthy') {
-                    $error = $health['error'] ?? '未知错误';
-                    error_log('[CRYPTO INIT] 加密健康检查失败: '.$error);
-                    return true; // 降级运行，不再抛出异常
+                    error_log('[CRYPTO INIT] 传统加密健康检查失败: '.($health['error'] ?? '未知错误'));
+                    return true; // 降级运行
                 }
                 
-                error_log('[CRYPTO INIT] 加密模块初始化成功');
+                error_log('[CRYPTO INIT] 传统加密初始化成功');
                 return true;
             } catch (\Exception $e) {
-                error_log('[CRYPTO INIT] 加密初始化失败(降级运行): ' . $e->getMessage());
-                return true; // 降级运行，不再抛出异常
+                error_log('[CRYPTO INIT] 传统加密初始化失败(降级运行): ' . $e->getMessage());
+                return true; // 降级运行
             }
         } catch (\Exception $e) {
             error_log('[CRYPTO INIT] 加密初始化失败(降级运行): ' . $e->getMessage());
-            return true; // 降级运行，不再抛出异常
+            return true; // 降级运行
         }
     }
 
 
 
     private static function stageConfigValidation($mode) {
-        // 配置验证逻辑
-        if (!defined('SESSION_TIMEOUT') || SESSION_TIMEOUT < 300) {
-            throw new \Exception("SESSION_TIMEOUT配置值不合法");
+        // 修改SESSION_TIMEOUT检查
+        if (!defined('SESSION_TIMEOUT')) {
+            define('SESSION_TIMEOUT', 3600); // 设置默认值
+        }
+        
+        if (SESSION_TIMEOUT < 300) {
+            throw new \Exception("SESSION_TIMEOUT配置值不合法（最小值：300秒）");
         }
         
         // 增强的数据库主机验证逻辑
@@ -312,19 +355,25 @@ class Bootstrap {
         return true;
     }
 
+    private static function initSystemMonitor() {
+        self::$monitor = new \Services\SystemMonitorService();
+        return true;
+    }
+    
     private static function stageMiddlewares($mode) {
         try {
             // 加载核心中间件
             $middlewares = [
                 new \Middlewares\AuthMiddleware(),
-                new \Middlewares\RateLimitMiddleware(),
+                new \Middlewares\RateLimitMiddleware(), // 添加速率限制
                 new \Middlewares\SecurityMiddleware()
             ];
-            
-            foreach ($middlewares as $middleware) {
-                $app->addMiddleware($middleware);
+            if (!self::$app) {
+                throw new \Exception('应用实例(app)未注入，无法加载中间件');
             }
-            
+            foreach ($middlewares as $middleware) {
+                self::$app->addMiddleware($middleware);
+            }
             error_log('[MIDDLEWARES] 中间件加载完成');
             return true;
         } catch (\Exception $e) {
@@ -369,6 +418,37 @@ class Bootstrap {
         } catch (\Exception $fbException) {
             self::logCriticalFailure($fbException);
             throw new \Exception("系统初始化完全失败: ".$fbException->getMessage());
+        }
+    }
+
+    private static function stageWebSocket($mode) {
+        if ($mode !== self::MODE_PRIMARY) {
+            return true; // 备用模式不启动WebSocket
+        }
+        
+        try {
+            $wsPort = getenv('WS_PORT') ?: 8080;
+            $wsService = new \Services\WebSocketService();
+            $monitor = new \Services\SystemMonitorService(); // 修正：不传递参数
+            
+            $server = \Ratchet\Server\IoServer::factory(
+                new \Ratchet\Http\HttpServer(
+                    new \Ratchet\WebSocket\WsServer($wsService)
+                ),
+                $wsPort
+            );
+            
+            // 每5秒广播一次监控数据
+            $server->loop->addPeriodicTimer(5, function() use ($monitor) {
+                $monitor->broadcastMetrics();
+            });
+            
+            // 后台运行
+            $server->run();
+            return true;
+        } catch (\Exception $e) {
+            error_log('[WEBSOCKET] 启动失败: ' . $e->getMessage());
+            return false;
         }
     }
 

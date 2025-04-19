@@ -129,9 +129,18 @@ $apiUsage = getApiUsageData();
                         <div class="progress-bar bg-warning" role="progressbar" style="width: <?php echo $stats['storage_usage']; ?>%"></div>
                     </div>
                 </div>
-                <div class="alert alert-<?php echo $stats['system_status'] === 'normal' ? 'success' : 'danger'; ?> mb-0">
+                <div class="alert alert-<?php echo $stats['system_status'] === 'normal' ? 'success' : 'danger'; ?> mb-3">
                     <i class="bi bi-<?php echo $stats['system_status'] === 'normal' ? 'check-circle' : 'exclamation-triangle'; ?>"></i>
                     系统状态: <?php echo ucfirst($stats['system_status']); ?>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header py-2">
+                        <h6 class="mb-0">实时监控</h6>
+                    </div>
+                    <div class="card-body p-2">
+                        <div id="realtimeChart" style="height: 150px;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -257,4 +266,87 @@ document.getElementById('confirmRefresh').addEventListener('click', function() {
         $('#refreshModal').modal('hide');
     });
 });
+</script>
+
+<!-- 实时监控图表 -->
+<script>
+// 初始化实时监控图表
+const realtimeCtx = document.getElementById('realtimeChart').getContext('2d');
+const realtimeChart = new Chart(realtimeCtx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [
+            {
+                label: 'CPU使用率',
+                data: [],
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1,
+                borderWidth: 1
+            },
+            {
+                label: '内存使用率',
+                data: [],
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.1,
+                borderWidth: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    boxWidth: 12
+                }
+            }
+        },
+        scales: {
+            y: {
+                min: 0,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// 实时更新监控数据
+function updateRealtimeChart() {
+    fetch('?monitor=dashboard')
+        .then(response => response.json())
+        .then(data => {
+            const now = new Date();
+            const timeLabel = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
+            
+            // 添加新数据点
+            realtimeChart.data.labels.push(timeLabel);
+            realtimeChart.data.datasets[0].data.push(data.current.cpu * 100);
+            realtimeChart.data.datasets[1].data.push(data.current.memory * 100);
+            
+            // 保留最近20个数据点
+            if (realtimeChart.data.labels.length > 20) {
+                realtimeChart.data.labels.shift();
+                realtimeChart.data.datasets.forEach(dataset => {
+                    dataset.data.shift();
+                });
+            }
+            
+            realtimeChart.update();
+        })
+        .catch(error => console.error('监控数据获取失败:', error));
+}
+
+// 每5秒更新一次图表
+setInterval(updateRealtimeChart, 5000);
+updateRealtimeChart(); // 立即执行一次
 </script>

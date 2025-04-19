@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta name="csrf-token" content="<?php echo SessionHelper::get('csrf_token'); ?>">
     <title>智能防御仪表盘</title>
     <script src="/js/three.min.js"></script>
     <style>
@@ -87,7 +88,8 @@
         }
 
         function setupWebSocket() {
-            const ws = new WebSocket(WS_URL);
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+            const ws = new WebSocket(`${WS_URL}?csrf_token=${encodeURIComponent(token)}`);
             ws.onmessage = function(event) {
                 const threatData = JSON.parse(event.data);
                 visualizeThreat(threatData);

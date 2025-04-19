@@ -20,18 +20,31 @@ class AuthMiddleware {
      * @return bool 是否已登录
      */
     public static function checkAuth(): bool {
-        if (empty($_SESSION['user_id'])) {
-            RedirectHelper::redirect('/login');
-            return false;
-        }
-        return true;
-    }
-
-
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         return !empty($_SESSION['user_id']);
+    }
+
+    public static function secureSession(): void {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        // 防止会话固定
+        if (empty($_SESSION['initiated'])) {
+            session_regenerate_id(true);
+            $_SESSION['initiated'] = true;
+            $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+        }
+        
+        // 定期更新会话ID
+        if (!isset($_SESSION['last_regenerate']) || 
+            time() - $_SESSION['last_regenerate'] > 300) { // 5分钟更新一次
+            session_regenerate_id(true);
+            $_SESSION['last_regenerate'] = time();
+        }
     }
 
     /**

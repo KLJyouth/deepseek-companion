@@ -1,30 +1,60 @@
-<?php
+huan<?php
+declare(strict_types=1);
+
 namespace Libs;
 
 use \Exception;
+use \Throwable;
+use \SodiumException;
 
 /**
  * AI伴侣自定义加密工具类
  * 提供数据加密/解密和编解码功能
  */
-class CryptoHelper {
-    // 加密密钥配置
+final class CryptoHelper {
+    private const DEFAULT_CIPHER = 'aes-256-gcm';
+    private const KEY_DERIVATION_ITERATIONS = 100000;
+    
     private static string $encryptionKey;
     private static string $iv;
     private static ?array $pqcKeyPair = null;
+    private static string $currentCipher = self::DEFAULT_CIPHER;
     
     /**
      * 初始化加密配置
+     * @param string $key 32字节加密密钥
+     * @param string $iv 初始化向量(12字节为GCM模式，16字节为CBC模式)
+     * @param string|null $cipher 加密算法(默认aes-256-gcm)
+     * @throws \InvalidArgumentException 如果参数无效
      */
-    public static function init(string $key, string $iv): void {
+    public static function init(
+        string $key, 
+        string $iv, 
+        ?string $cipher = null
+    ): void {
         if (strlen($key) !== 32) {
             throw new \InvalidArgumentException('加密密钥必须是32字节');
         }
-        if (strlen($iv) !== 16) {
-            throw new \InvalidArgumentException('IV必须是16字节');
+        
+        $cipher = $cipher ?? self::DEFAULT_CIPHER;
+        $validIvLengths = [
+            'aes-256-gcm' => 12,
+            'aes-256-cbc' => 16
+        ];
+        
+        if (!isset($validIvLengths[$cipher]) || strlen($iv) !== $validIvLengths[$cipher]) {
+            throw new \InvalidArgumentException(sprintf(
+                'IV必须是%d字节(%s模式)',
+                $validIvLengths[$cipher] ?? 0,
+                $cipher
+            ));
         }
+        
         self::$encryptionKey = $key;
         self::$iv = $iv;
+        self::$currentCipher = in_array($cipher, openssl_get_cipher_methods()) 
+            ? $cipher 
+            : self::DEFAULT_CIPHER;
     }
 
     /**
@@ -105,34 +135,64 @@ class CryptoHelper {
     }
     
     /**
-     * 自定义编码算法
+     * 安全擦除内存中的敏感数据
+     * @param string &$data 要擦除的数据引用
      */
-    public static function customEncode($data) {
-        if (!is_string($data)) {
-            $data = json_encode($data);
+    public static function secureErase(string &$data): void {
+        try {
+            if (function_exists('sodium_memzero')) {
+                sodium_memzero($data);
+            } else {
+                // 回退实现
+                $length = strlen($data);
+                $data = str_repeat("\0", $length);
+                unset($data);
+            }
+        } finally {
+            $data = '';
         }
-        
-        // 第一层：Base64编码
-        $encoded = base64_encode($data);
-        
-        // 第二层：字符替换
-        $encoded = strtr($encoded, [
-            '+' => '.',
-            '/' => '_',
-            '=' => '-'
-        ]);
-        
-        // 第三层：添加随机干扰字符
-        $result = '';
-        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for ($i = 0; $i < strlen($encoded); $i++) {
-            $result .= $encoded[$i];
-            if ($i % 3 == 0) {
-                $result .= $chars[rand(0, strlen($chars) - 1)];
+    }
+
+    /**
+     * 自定义编码算法(带安全擦除)
+     */
+    public static function customEncode($data): string {
+        try {
+            if (!is_string($data)) {
+                $data = json_encode($data);
+                if ($data === false) {
+                    throw new \RuntimeException('JSON编码失败');
+                }
+            }
+            
+            // 第一层：Base64编码
+            $encoded = base64_encode($data);
+            
+            // 第二层：字符替换
+            $encoded = strtr($encoded, [
+                '+' => '.',
+                '/' => '_',
+                '=' => '-'
+            ]);
+            
+            // 第三层：添加随机干扰字符
+            $result = '';
+            $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            $charLen = strlen($chars) - 1;
+            
+            for ($i = 0; $i < strlen($encoded); $i++) {
+                $result .= $encoded[$i];
+                if ($i % 3 == 0) {
+                    $result .= $chars[random_int(0, $charLen)];
+                }
+            }
+            
+            return $result;
+        } finally {
+            if (isset($data)) {
+                self::secureErase($data);
             }
         }
-        
-        return $result;
     }
     
     /**
@@ -159,63 +219,74 @@ class CryptoHelper {
     }
     
     /**
-     * AES-256-CBC加密
+     * AES-256-GCM加密
+     * @param mixed $data 要加密的数据(自动JSON编码非字符串数据)
+     * @return array{ciphertext:string, tag:string} 包含密文和认证标签的数组
+     * @throws \RuntimeException 如果加密失败
      */
-    public static function encrypt($data): string {
+    public static function encrypt($data): array {
         if (!isset(self::$encryptionKey)) {
             throw new \RuntimeException('加密组件未初始化，请先调用init()');
         }
         
-        if (is_string($data)) {
-            $payload = $data;
-        } else {
-            $payload = json_encode($data);
-        }
+        // 序列化非字符串数据
+        $payload = is_string($data) ? $data : json_encode($data);
         if ($payload === false) {
             throw new \RuntimeException('数据序列化失败');
         }
         
-        if (self::$pqcEnabled && function_exists('sodium_crypto_box_keypair')) {
-            $key = sodium_crypto_box_keypair();
-            return sodium_crypto_box($payload, $key);
-        }
+        $tag = '';
+        $ciphertext = openssl_encrypt(
         
-        $encrypted = openssl_encrypt(
-            $payload,
-            'AES-256-CBC',
+        $ciphertext = base64_decode($encrypted['ciphertext']);
             self::$encryptionKey,
             OPENSSL_RAW_DATA,
-            self::$iv
+            self::$iv,
+            $tag,
+            '',
+            16
         );
         
-        if ($encrypted === false) {
+        if ($ciphertext === false) {
             throw new \RuntimeException('加密失败: ' . openssl_error_string());
         }
         
-        return self::customEncode($encrypted);
+        return [
+            'ciphertext' => base64_encode($ciphertext),
+            'tag' => base64_encode($tag)
+        ];
     }
     
     /**
-     * AES-256-CBC解密
+     * AES-256-GCM解密
+     * @param array{ciphertext:string, tag:string} $encrypted 加密数据数组
+     * @return mixed 解密后的原始数据(自动JSON解码如果可能)
+     * @throws \RuntimeException 如果解密失败
      */
-    public static function decrypt($encrypted) {
-        $clean = self::customDecode($encrypted);
+    public static function decrypt(array $encrypted) {
+        if (!isset(self::$encryptionKey)) {
+            throw new \RuntimeException('加密组件未初始化，请先调用init()');
+        }
+        
+        $ciphertext = base64_decode($encrypted['ciphertext']);
+        $tag = base64_decode($encrypted['tag']);
         
         $data = openssl_decrypt(
-            $clean,
-            'AES-256-CBC',
+            $ciphertext,
+            'AES-256-GCM',
             self::$encryptionKey,
-            0,
-            self::$iv
+            OPENSSL_RAW_DATA,
+            self::$iv,
+            $tag
         );
         
-        // 尝试解码JSON
-        $decoded = json_decode($data, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            return $decoded;
-        } else {
-            return $data;
+        if ($data === false) {
+            throw new \RuntimeException('解密失败: ' . openssl_error_string());
         }
+        
+        // 尝试自动JSON解码
+        $decoded = json_decode($data, true);
+        return json_last_error() === JSON_ERROR_NONE ? $decoded : $data;
     }
     
     /**
@@ -550,9 +621,20 @@ class CryptoHelper {
     /**
      * 获取量子公钥
      * @return string|null 量子公钥(base64编码)，如果未初始化则返回null
+     * @throws \RuntimeException 如果Libsodium不可用
      */
     public static function getQuantumPublicKey(): ?string {
-        return self::$pqcKeyPair ? base64_encode(self::$pqcKeyPair['public_key']) : null;
+        if (!function_exists('sodium_crypto_box_keypair')) {
+            throw new \RuntimeException('Libsodium扩展不可用');
+        }
+        
+        if (!self::$pqcKeyPair) {
+            self::$pqcKeyPair = sodium_crypto_box_keypair();
+        }
+        
+        return base64_encode(
+            sodium_crypto_box_publickey(self::$pqcKeyPair)
+        );
     }
 
     /**

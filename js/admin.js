@@ -1,3 +1,6 @@
+// 引入CryptoJS库
+const CryptoJS = require('crypto-js');
+
 // 后台管理主逻辑
 document.addEventListener('DOMContentLoaded', () => {
     // 初始化UI组件
@@ -50,6 +53,11 @@ function initAPI() {
     });
 }
 
+// 获取CSRF令牌
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+
 // 测试API连接
 async function testAPIConnection() {
     try {
@@ -60,7 +68,8 @@ async function testAPIConnection() {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${getAPIKey()}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCSRFToken()
             }
         });
         
@@ -153,7 +162,8 @@ async function loadDashboardData() {
 async function fetchStats() {
     const response = await fetch('/api/stats', {
         headers: {
-            'Authorization': `Bearer ${getAPIKey()}`
+            'Authorization': `Bearer ${getAPIKey()}`,
+            'X-CSRF-TOKEN': getCSRFToken()
         }
     });
     
@@ -166,13 +176,33 @@ async function fetchStats() {
 
 // 获取API使用情况
 async function fetchAPIUsage() {
+    const requestData = {
+        start_date: document.getElementById('dateRangeStart').value,
+        end_date: document.getElementById('dateRangeEnd').value
+    };
+    
+    // 生成API签名
+    const { signature, timestamp } = generateAPISignature(requestData);
+    
     const response = await fetch('/api/usage', {
+        method: 'POST',
         headers: {
-            'Authorization': `Bearer ${getAPIKey()}`
-        }
+            'Authorization': `Bearer ${getAPIKey()}`,
+            'X-CSRF-TOKEN': getCSRFToken(),
+            'X-API-SIGNATURE': signature,
+            'X-API-TIMESTAMP': timestamp,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
     });
     
     if (!response.ok) {
+        if (response.status === 403) {
+            window.location.reload();
+        } else if (response.status === 429) {
+            showRateLimitError(response);
+            return;
+        }
         throw new Error('获取API使用情况失败');
     }
     
@@ -181,13 +211,32 @@ async function fetchAPIUsage() {
 
 // 获取用户分布
 async function fetchUserDistribution() {
+    const requestData = {
+        group_by: 'region'
+    };
+    
+    // 生成API签名
+    const { signature, timestamp } = generateAPISignature(requestData);
+    
     const response = await fetch('/api/users/distribution', {
+        method: 'POST',
         headers: {
-            'Authorization': `Bearer ${getAPIKey()}`
-        }
+            'Authorization': `Bearer ${getAPIKey()}`,
+            'X-CSRF-TOKEN': getCSRFToken(),
+            'X-API-SIGNATURE': signature,
+            'X-API-TIMESTAMP': timestamp,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
     });
     
     if (!response.ok) {
+        if (response.status === 403) {
+            window.location.reload();
+        } else if (response.status === 429) {
+            showRateLimitError(response);
+            return;
+        }
         throw new Error('获取用户分布失败');
     }
     
@@ -323,4 +372,11 @@ function initSliders() {
     if (settings.model) {
         document.getElementById('modelSelect').value = settings.model;
     }
+}
+
+// 显示速率限制错误
+function showRateLimitError(response) {
+    const reset = response.headers.get('X-RateLimit-Reset');
+    const retryAfter = reset ? new Date(reset * 1000) : new Date(Date.now() + 60000);
+    showToast(`请求过于频繁，请在 ${retryAfter.toLocaleTimeString()} 后重试`, 'warning');
 }

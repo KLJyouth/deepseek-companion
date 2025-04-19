@@ -7,9 +7,34 @@ use Libs\DatabaseHelper;
 use Libs\Exception\SecurityException;
 
 class ContractController {
+    private $signService;
+    
+    public function __construct() {
+        $this->signService = new \Services\ApiSignService();
+    }
+    
     // 合同模板管理
     public function createTemplateAction() {
         AuthMiddleware::verifyAdmin();
+        
+        // 验证API签名
+        $signature = $_SERVER['HTTP_X_API_SIGNATURE'] ?? '';
+        $timestamp = $_SERVER['HTTP_X_API_TIMESTAMP'] ?? '';
+        
+        if (empty($signature) || empty($timestamp)) {
+            throw new SecurityException('缺少必要的签名头信息');
+        }
+        
+        // 验证时间戳
+        if (!$this->signService->validateTimestamp($timestamp)) {
+            throw new SecurityException('请求已过期');
+        }
+        
+        // 验证签名
+        $data = $_POST;
+        if (!$this->signService->verifySignature($data, $timestamp, $signature)) {
+            throw new SecurityException('签名验证失败');
+        }
         
         $db = DatabaseHelper::getInstance();
         $templateData = [

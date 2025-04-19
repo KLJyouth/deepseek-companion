@@ -10,6 +10,18 @@ if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
 
 // 数据库配置
 require_once 'config.php';
+require_once 'controllers/MonitorController.php';
+
+// 监控API路由
+if (isset($_GET['monitor'])) {
+    $monitor = new MonitorController();
+    if ($_GET['monitor'] === 'metrics') {
+        $monitor->metrics();
+    } else {
+        $monitor->dashboard();
+    }
+    exit;
+}
 
 // 获取用户数据
 $user_id = $_SESSION['user_id'];

@@ -427,6 +427,73 @@ input:checked + .slider:before {
     opacity: 1;
 }
 
+/* 3D地球容器 */
+.globe-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+.globe-overlay {
+    position: relative;
+    z-index: 1;
+}
+
+/* 数据卡片样式 */
+.data-card {
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.data-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.data-card .card-body {
+    padding: 1.5rem;
+}
+
+.data-card .card-title {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.data-card .card-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.data-card .card-description {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0;
+}
+
+/* 数字动画 */
+@keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animated-counter {
+    animation: countUp 1s ease-out forwards;
+}
+
 /* 对话框样式 */
 .dialog-overlay {
     position: fixed;

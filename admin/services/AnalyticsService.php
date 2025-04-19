@@ -37,7 +37,7 @@ class AnalyticsService {
         curl_setopt_array($ch, [
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'Authorization: Bearer '.$_ENV['TF_SERVING_TOKEN']
+                'Authorization: Bearer '.getenv('TF_SERVING_TOKEN')
             ],
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($payload),

@@ -112,6 +112,51 @@ CREATE TABLE `admin_operation_logs` (
   CONSTRAINT `fk_admin_op_log` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 系统指标表
+CREATE TABLE IF NOT EXISTS `system_metrics` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `metric` varchar(20) NOT NULL COMMENT '指标类型',
+  `value` float NOT NULL COMMENT '指标值',
+  `timestamp` int NOT NULL COMMENT '时间戳',
+  PRIMARY KEY (`id`),
+  KEY `idx_metric` (`metric`),
+  KEY `idx_timestamp` (`timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统监控指标表';
+
+-- 小时聚合表
+CREATE TABLE IF NOT EXISTS `metric_hourly` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `metric` varchar(20) NOT NULL,
+  `timestamp` int NOT NULL,
+  `avg_value` float NOT NULL,
+  `min_value` float NOT NULL,
+  `max_value` float NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_metric_time` (`metric`, `timestamp`),
+  KEY `idx_timestamp` (`timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 日聚合表
+CREATE TABLE IF NOT EXISTS `metric_daily` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `metric` varchar(20) NOT NULL,
+  `timestamp` int NOT NULL,
+  `avg_value` float NOT NULL,
+  `min_value` float NOT NULL,
+  `max_value` float NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_metric_time` (`metric`, `timestamp`),
+  KEY `idx_timestamp` (`timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `metric` varchar(20) NOT NULL COMMENT '指标类型',
+  `value` float NOT NULL COMMENT '指标值',
+  `timestamp` int NOT NULL COMMENT '时间戳',
+  PRIMARY KEY (`id`),
+  KEY `idx_metric` (`metric`),
+  KEY `idx_timestamp` (`timestamp`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统监控指标表';
+
 -- 服务操作日志表
 CREATE TABLE `service_operation_logs` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -135,6 +180,20 @@ INSERT INTO `users`
 (`username`, `password`, `email`, `role`, `status`) 
 VALUES 
 ('admin', '$2y$12$8eJwWqJzN4hY5bV9mQzZ3uB7d6fT2hKpL0vX1cR3yA4nZ5x7v8C9', 'admin@example.com', 'admin', 1);
+
+-- WebSocket认证令牌表
+CREATE TABLE IF NOT EXISTS `ws_auth_tokens` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_token` (`token`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_expires` (`expires_at`),
+  CONSTRAINT `fk_ws_token_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='WebSocket认证令牌';
 
 -- 创建视图
 CREATE VIEW `user_stats` AS

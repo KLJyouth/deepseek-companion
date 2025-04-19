@@ -93,6 +93,22 @@ $isAdmin = $role === 'admin';
                 </a>
             </li>
             
+            <!-- 历史监控 -->
+            <?php if ($isAdmin): ?>
+            <li class="nav-item">
+                <a class="nav-link <?php 
+                    if (basename($_SERVER['PHP_SELF']) === 'history.php') {
+                        echo 'active';
+                    } else {
+                        echo '';
+                    }
+                ?>"
+                   href="history.php">
+                    <i class="bi bi-clock-history me-2"></i>历史监控
+                </a>
+            </li>
+            <?php endif; ?>
+            
             <!-- 用户管理 -->
             <?php if ($isAdmin): ?>
             <li class="nav-item">

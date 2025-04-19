@@ -114,13 +114,8 @@ try {
 // 引入 RedirectHelper 类，该类应包含重定向功能
 require_once __DIR__.'/libs/RedirectHelper.php';
 // 使用 RedirectHelper 类的静态方法进行重定向
-// 确保已引入 RedirectHelper 类
 require_once __DIR__.'/libs/RedirectHelper.php';
-// 使用 Libs 命名空间下的 RedirectHelper 类进行重定向
-// 从代码整体来看，RedirectHelper 类已经被引入，理论上类型定义应存在。
-// 此处保持代码原样，若 IDE 仍提示类型未定义，可检查 Libs/RedirectHelper.php 文件是否存在，
-// 以及该文件中是否正确定义了 RedirectHelper 类和命名空间。
-Libs\RedirectHelper::redirect('admin.php');
+\Libs\RedirectHelper::redirect('admin.php');
     }
     
     // 处理登录请求

@@ -10,7 +10,7 @@ define('ROOT_PATH', realpath(__DIR__));
 
 // ==================== 基础配置 ====================
 // 环境检测 - 优先使用环境变量
-$env = getenv('APP_ENV') ?: 'production';
+// $env variable removed, using getenv('APP_ENV') directly
 
 // ==================== 路径配置 ====================
 define('LOG_PATH', ROOT_PATH.'/logs');
@@ -19,12 +19,17 @@ define('CACHE_PATH', ROOT_PATH.'/cache');
 
 // ==================== 安全配置 ====================
 // 加密配置
-define('ENCRYPTION_METHOD', 'AES-256-CBC');
-define('ENCRYPTION_KEY', getenv('ENCRYPTION_KEY') ?: bin2hex(random_bytes(16)));
-define('ENCRYPTION_IV', getenv('ENCRYPTION_IV') ?: bin2hex(random_bytes(8)));
+// Supported values: 'AES-256-CBC', 'quantum'
+define('ENCRYPTION_METHOD', getenv('ENCRYPTION_METHOD') ?: 'quantum');
+define('ENCRYPTION_KEY', getenv('ENCRYPTION_KEY') ?: bin2hex(random_bytes(16))); // For legacy encryption
+define('ENCRYPTION_IV', getenv('ENCRYPTION_IV') ?: bin2hex(random_bytes(8))); // For legacy encryption
+
+// Quantum encryption settings
+define('QUANTUM_KEY_ROTATION', getenv('QUANTUM_KEY_ROTATION') ?: 3600); // Rotation interval in seconds
+define('QUANTUM_MAX_KEY_VERSIONS', getenv('QUANTUM_MAX_KEY_VERSIONS') ?: 3); // Number of old keys to retain
 
 // 统一会话安全配置
-$sessionSecure = $env === 'production';
+$sessionSecure = getenv('APP_ENV') === 'production';
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', $sessionSecure ? 1 : 0);
 ini_set('session.use_strict_mode', 1);
@@ -108,13 +113,6 @@ try {
     die("系统初始化失败: ".$e->getMessage());
 }
 
-
-
-
-
-
-
-
 // 管理员跳过密码哈希(必须通过环境变量设置)
 if (!getenv('ADMIN_BYPASS_PASSWORD')) {
     throw new \RuntimeException('管理员绕过密码未设置，请通过环境变量配置');
@@ -126,15 +124,13 @@ if (!file_exists(__DIR__.'/logs')) {
     mkdir(__DIR__.'/logs', 0777, true);
 }
 
-
-
 // 已移动至文件顶部
 
 // DeepSeek API配置 (符合官方文档规范)
 // 设置API密钥
 
 // DeepSeek API配置
-define('DEEPSEEK_API_BASE_URL', 'https://api.deepseek.com/v1');
+// Removed duplicate DEEPSEEK_API_BASE_URL definition
 define('DEEPSEEK_API_CHAT_ENDPOINT', DEEPSEEK_API_BASE_URL.'/chat/completions');
 define('DEEPSEEK_API_TIMEOUT', 30); // 请求超时(秒)
 define('DEEPSEEK_API_MAX_RETRIES', 3); // 最大重试次数
@@ -144,6 +140,22 @@ define('DEEPSEEK_API_HEADERS', [
     'Content-Type' => 'application/json',
     'Authorization' => 'Bearer '.CryptoHelper::decrypt(DEEPSEEK_API_KEY),
     'Accept' => 'application/json'
+]);
+
+// 速率限制配置
+define('RATE_LIMIT_CONFIG', [
+    'ip' => [
+        'limit' => 200, // 每分钟200次
+        'window' => 60
+    ],
+    'user' => [
+        'limit' => 50, // 每分钟50次
+        'window' => 60
+    ],
+    'api_key' => [
+        'limit' => 1000, // 每分钟1000次
+        'window' => 60
+    ]
 ]);
 
 // API响应格式标准
@@ -173,7 +185,7 @@ define('API_ERROR_CODES', [
 ]);
 
 // 统一错误处理配置
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+error_reporting(E_ALL);
 ini_set('display_errors', 0); // 始终不显示错误
 ini_set('log_errors', 1);
 ini_set('error_log', LOG_PATH . '/app_errors.log');
@@ -192,7 +204,6 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
         E_USER_ERROR => 'User Error',
         E_USER_WARNING => 'User Warning',
         E_USER_NOTICE => 'User Notice',
-        E_STRICT => 'Strict',
         E_RECOVERABLE_ERROR => 'Recoverable Error',
         E_DEPRECATED => 'Deprecated',
         E_USER_DEPRECATED => 'User Deprecated'
@@ -215,7 +226,7 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
         if (!headers_sent()) {
             header('HTTP/1.1 500 Internal Server Error');
         }
-        if ($env === 'development') {
+        if (getenv('APP_ENV') === 'development') {
             echo "<pre>$message</pre>";
         } else {
             readfile(ROOT_PATH . '/error_pages/500.html');
@@ -242,7 +253,7 @@ set_exception_handler(function($e) {
     if (!headers_sent()) {
         header('HTTP/1.1 500 Internal Server Error');
     }
-    if ($env === 'development') {
+    if (getenv('APP_ENV') === 'development') {
         echo "<pre>$message</pre>";
     } else {
         readfile(ROOT_PATH . '/error_pages/500.html');
@@ -262,6 +273,9 @@ if (!is_writable($sessionPath)) {
 ini_set('session.save_path', $sessionPath);
 ini_set('session.save_handler', 'files');
 
+if (!defined('SESSION_TIMEOUT')) {
+    define('SESSION_TIMEOUT', 3600); // 默认1小时
+}
 
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 100);
@@ -378,7 +392,7 @@ try {
     if (session_status() === PHP_SESSION_NONE) {
         session_start([
             'cookie_lifetime' => SESSION_TIMEOUT,
-            'cookie_secure' => $env === 'production',
+            'cookie_secure' => getenv('APP_ENV') === 'production',
             'cookie_httponly' => true
         ]);
     }
@@ -463,3 +477,13 @@ header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload'
 define('CSRF_TOKEN_NAME', 'csrf_token');
 define('CSRF_TOKEN_LENGTH', 32);
 define('CSRF_TOKEN_EXPIRE', 3600);
+
+// 分析要点：
+// 1. 配置文件采用模块化分组，所有关键配置均支持环境变量覆盖，便于多环境部署和安全管理。
+// 2. 数据库、API、加密、会话等均有严格的初始化和异常处理流程，保证系统健壮性。
+// 3. 目录权限和所有者设置有多处冗余，后续可考虑合并优化。
+// 4. 错误和异常处理统一，日志记录详尽，便于排查问题。
+// 5. 工具函数和安全头设置齐全，符合现代 Web 应用安全最佳实践。
+// 6. 自动加载机制保证类文件按需加载，便于扩展和维护。
+// 7. 速率限制、API 响应格式、错误码定义等均有标准化，便于前后端协作。
+// 8. 需关注环境变量缺失、目录权限不足、数据库连接失败等易出错点。

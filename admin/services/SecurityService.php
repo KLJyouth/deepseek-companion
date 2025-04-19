@@ -5,6 +5,7 @@ use Libs\CryptoHelper;
 use Libs\DatabaseHelper;
 use Libs\Exception\SecurityException;
 use Libs\SecurityManager;
+use Admin\Services\OperationLog;
 
 class SecurityService
 {
@@ -73,7 +74,7 @@ class SecurityService
         curl_setopt_array($ch, [
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'X-API-Key: '.$_ENV['AI_FIREWALL_KEY']
+                'X-API-Key: '.getenv('AI_FIREWALL_KEY')
             ],
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode(['instances' => [$payload]]),
@@ -85,7 +86,7 @@ class SecurityService
 
     public function fetchThreatIntelligence() {
         // 获取全球威胁情报
-        $feed = file_get_contents(self::THREAT_API."?key=".$_ENV['THREAT_API_KEY']);
+        $feed = file_get_contents(self::THREAT_API."?key=".getenv('THREAT_API_KEY'));
         $data = json_decode($feed, true);
 
         DatabaseHelper::getInstance()->batchInsert(
