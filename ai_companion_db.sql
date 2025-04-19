@@ -15,11 +15,17 @@ CREATE TABLE `users` (
   `id` int NOT NULL AUTO_INCREMENT,
   `username` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `password_changed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `password_strength` tinyint DEFAULT 0 COMMENT '密码强度1-5',
+  `password_history` text DEFAULT NULL COMMENT 'JSON格式的密码历史记录',
   `email` varchar(255) NOT NULL,
   `role` enum('admin','user') NOT NULL DEFAULT 'user',
   `status` tinyint NOT NULL DEFAULT '1' COMMENT '0-禁用,1-正常',
   `last_login` datetime DEFAULT NULL,
   `is_online` tinyint DEFAULT '0',
+  `tfa_secret` varchar(255) DEFAULT NULL COMMENT '加密的2FA密钥',
+  `biometric_data` text DEFAULT NULL COMMENT '加密的生物识别数据',
+  `biometric_enabled` tinyint DEFAULT '0' COMMENT '是否启用生物识别',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -85,6 +91,43 @@ CREATE TABLE `login_attempts` (
   PRIMARY KEY (`id`),
   KEY `username` (`username`),
   KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 管理员操作日志表
+CREATE TABLE `admin_operation_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `admin_id` int NOT NULL,
+  `operation_type` varchar(50) NOT NULL COMMENT '操作类型',
+  `target_id` int DEFAULT NULL COMMENT '操作目标ID',
+  `target_type` varchar(50) DEFAULT NULL COMMENT '操作目标类型',
+  `ip_address` varchar(45) NOT NULL,
+  `user_agent` text NOT NULL,
+  `operation_data` json DEFAULT NULL COMMENT '操作详情',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '1-成功,0-失败',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_admin` (`admin_id`),
+  KEY `idx_operation` (`operation_type`),
+  KEY `idx_created` (`created_at`),
+  CONSTRAINT `fk_admin_op_log` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 服务操作日志表
+CREATE TABLE `service_operation_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `admin_id` int NOT NULL,
+  `service` varchar(50) NOT NULL,
+  `action` varchar(50) NOT NULL,
+  `ip` varchar(45) NOT NULL,
+  `user_agent` text NOT NULL,
+  `data` json DEFAULT NULL,
+  `timestamp` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_admin` (`admin_id`),
+  KEY `idx_service` (`service`),
+  KEY `idx_action` (`action`),
+  KEY `idx_timestamp` (`timestamp`),
+  CONSTRAINT `fk_service_log_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 初始化管理员账户

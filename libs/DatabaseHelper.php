@@ -274,13 +274,112 @@ SQL;
     private function isSensitiveColumn($table, $column) {
         // 定义需要加密的字段
         $sensitiveColumns = [
-            'users' => ['password', 'email', 'remember_token'],
+            'users' => ['password', 'email', 'remember_token', 'tfa_secret', 'biometric_data'],
             'messages' => ['content'],
             'api_usage' => ['endpoint']
         ];
         
         return isset($sensitiveColumns[$table]) && 
                in_array($column, $sensitiveColumns[$table]);
+    }
+
+    /**
+     * 检查用户是否启用了生物识别认证
+     */
+    public function isBiometricEnabled($userId) {
+        $sql = "SELECT biometric_enabled FROM {$this->tablePrefix}users WHERE id = ?";
+        $stmt = $this->secureQuery($sql, [
+            ['value' => $userId, 'type' => 'i']
+        ]);
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        return $row && $row['biometric_enabled'] == 1;
+    }
+
+    /**
+     * 更新用户生物识别数据
+     */
+    public function updateBiometricData($userId, $data) {
+        $sql = "UPDATE {$this->tablePrefix}users SET 
+                biometric_data = ?, 
+                biometric_enabled = 1 
+                WHERE id = ?";
+        
+        return $this->secureQuery($sql, [
+            ['value' => json_encode($data), 'type' => 's', 'encrypt' => true],
+            ['value' => $userId, 'type' => 'i']
+        ]);
+    }
+
+    /**
+     * 更新用户密码并记录历史
+     */
+    public function updateUserPassword($userId, $newPassword) {
+        // 获取当前密码历史
+        $user = $this->getRow("SELECT password, password_history FROM {$this->tablePrefix}users WHERE id = ?", [
+            ['value' => $userId, 'type' => 'i']
+        ]);
+        
+        // 准备密码历史记录
+        $history = $user['password_history'] ? json_decode($user['password_history'], true) : [];
+        if (!empty($user['password'])) {
+            array_unshift($history, $user['password']);
+            $history = array_slice($history, 0, 5); // 保留最近5个密码
+        }
+        
+        // 计算密码强度
+        $strength = $this->calculatePasswordStrength($newPassword);
+        
+        // 更新密码
+        return $this->update('users', [
+            'password' => password_hash($newPassword, PASSWORD_BCRYPT),
+            'password_changed_at' => date('Y-m-d H:i:s'),
+            'password_history' => json_encode($history),
+            'password_strength' => $strength
+        ], 'id = ?', [
+            ['value' => $userId, 'type' => 'i']
+        ]);
+    }
+
+    /**
+     * 计算密码强度(1-5)
+     */
+    private function calculatePasswordStrength(string $password): int {
+        $strength = 0;
+        
+        // 长度加分
+        $length = strlen($password);
+        if ($length >= 12) $strength++;
+        if ($length >= 16) $strength++;
+        
+        // 字符类型加分
+        if (preg_match('/[A-Z]/', $password)) $strength++;
+        if (preg_match('/[0-9]/', $password)) $strength++;
+        if (preg_match('/[^A-Za-z0-9]/', $password)) $strength++;
+        
+        return min($strength, 5);
+    }
+
+    /**
+     * 检查密码是否在历史记录中
+     */
+    public function isPasswordInHistory($userId, $password) {
+        $user = $this->getRow("SELECT password_history FROM {$this->tablePrefix}users WHERE id = ?", [
+            ['value' => $userId, 'type' => 'i']
+        ]);
+        
+        if (empty($user['password_history'])) {
+            return false;
+        }
+        
+        $history = json_decode($user['password_history'], true);
+        foreach ($history as $oldHash) {
+            if (password_verify($password, $oldHash)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**

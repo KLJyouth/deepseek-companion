@@ -13,7 +13,8 @@ class Bootstrap {
         'dependencyCheck',
         'configValidation',
         'dbConnection',
-        'cryptoInit'
+        'cryptoInit',
+        'middlewares'
     ];
 
     public static function initialize() {
@@ -309,6 +310,27 @@ class Bootstrap {
             throw new \Exception("依赖检查未通过 ({$score}/{$totalChecks})");
         }
         return true;
+    }
+
+    private static function stageMiddlewares($mode) {
+        try {
+            // 加载核心中间件
+            $middlewares = [
+                new \Middlewares\AuthMiddleware(),
+                new \Middlewares\RateLimitMiddleware(),
+                new \Middlewares\SecurityMiddleware()
+            ];
+            
+            foreach ($middlewares as $middleware) {
+                $app->addMiddleware($middleware);
+            }
+            
+            error_log('[MIDDLEWARES] 中间件加载完成');
+            return true;
+        } catch (\Exception $e) {
+            error_log('[MIDDLEWARES] 中间件加载失败: ' . $e->getMessage());
+            return false;
+        }
     }
 
     private static function cacheInitStatus() {

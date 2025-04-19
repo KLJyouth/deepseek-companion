@@ -137,6 +137,35 @@ class SecurityManager {
     }
     
     /**
+     * 验证生物识别请求
+     */
+    public function validateBiometricRequest(array $requestData): bool {
+        // 检查必要字段
+        if (empty($requestData['biometric_token']) || 
+            empty($requestData['device_id']) ||
+            empty($requestData['ip_address'])) {
+            return false;
+        }
+        
+        // 评估设备风险
+        $deviceRisk = $this->threatAnalyzer->assessDeviceRisk(
+            $requestData['device_id'],
+            $requestData['ip_address']
+        );
+        
+        // 高风险设备拒绝生物识别
+        if ($deviceRisk >= 4) {
+            $this->logSecurityEvent('high_risk_biometric_attempt', [
+                'device_id' => $requestData['device_id'],
+                'ip_address' => $requestData['ip_address']
+            ]);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
      * 获取当前安全状态
      */
     public function getSecurityStatus(): array {
@@ -146,5 +175,19 @@ class SecurityManager {
             'active_decoys' => count($this->decoySystems),
             'last_assessment' => date('c')
         ];
+    }
+
+    /**
+     * 记录安全事件
+     */
+    private function logSecurityEvent(string $eventType, array $data): void {
+        $logEntry = [
+            'timestamp' => date('c'),
+            'event_type' => $eventType,
+            'data' => $data,
+            'risk_level' => $this->currentRiskLevel
+        ];
+        
+        file_put_contents('/var/log/security_events.log', json_encode($logEntry)."\n", FILE_APPEND);
     }
 }

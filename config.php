@@ -23,14 +23,10 @@ define('ENCRYPTION_METHOD', 'AES-256-CBC');
 define('ENCRYPTION_KEY', getenv('ENCRYPTION_KEY') ?: bin2hex(random_bytes(16)));
 define('ENCRYPTION_IV', getenv('ENCRYPTION_IV') ?: bin2hex(random_bytes(8)));
 
-// 会话安全
+// 统一会话安全配置
+$sessionSecure = $env === 'production';
 ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', $env === 'production');
-ini_set('session.use_strict_mode', 1);
-
-// 会话安全配置
-ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', $env === 'production' ? 1 : 0);
+ini_set('session.cookie_secure', $sessionSecure ? 1 : 0);
 ini_set('session.use_strict_mode', 1);
 ini_set('session.cookie_samesite', 'Strict');
 ini_set('session.gc_maxlifetime', 3600); // 1小时
@@ -38,10 +34,15 @@ ini_set('session.use_only_cookies', 1);
 ini_set('session.use_trans_sid', 0);
 
 // ==================== 数据库配置 ====================
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_USER', getenv('DB_USER') ?: 'deepseek_gxggm_c');
-define('DB_PASS', getenv('DB_PASS') ?: 'fJD47Xw3E4XQ');
-define('DB_NAME', getenv('DB_NAME') ?: 'ai_companion');
+// 数据库配置必须通过环境变量设置
+if (!getenv('DB_HOST') || !getenv('DB_USER') || !getenv('DB_PASS') || !getenv('DB_NAME')) {
+    throw new \RuntimeException('数据库配置未设置，请通过环境变量配置');
+}
+
+define('DB_HOST', getenv('DB_HOST'));
+define('DB_USER', getenv('DB_USER'));
+define('DB_PASS', getenv('DB_PASS')); 
+define('DB_NAME', getenv('DB_NAME'));
 define('DB_CHARSET', 'utf8mb4');
 define('DB_SSL', filter_var(getenv('DB_SSL'), FILTER_VALIDATE_BOOLEAN));
 define('DB_TABLE_PREFIX', getenv('DB_TABLE_PREFIX') ?: 'ac_');
@@ -62,22 +63,29 @@ define('FADADA_API_SECRET', CryptoHelper::encrypt(getenv('FADADA_API_SECRET')));
 define('FADADA_CALLBACK_SECRET', CryptoHelper::encrypt(getenv('FADADA_CALLBACK_SECRET')));
 
 // API配置
-define('DEEPSEEK_API_KEY', CryptoHelper::encrypt(
-    getenv('DEEPSEEK_API_KEY') ?: 'sk-09f15a7a15774fafae8a477f658c3afb'
-));
+if (!getenv('DEEPSEEK_API_KEY')) {
+    throw new \RuntimeException('DeepSeek API密钥未设置，请通过环境变量配置');
+}
+define('DEEPSEEK_API_KEY', CryptoHelper::encrypt(getenv('DEEPSEEK_API_KEY')));
 define('DEEPSEEK_API_BASE_URL', 'https://api.deepseek.com/v1');
 define('DEEPSEEK_API_TIMEOUT', 30);
 define('DEEPSEEK_API_MAX_RETRIES', 3);
 
 // ==================== 目录权限 ====================
-// 统一目录权限配置
+// 安全目录权限配置
 define('REQUIRED_DIRS', [
-    LOG_PATH => '0770',
-    SESSION_PATH => '0770',
-    CACHE_PATH => '0770',
-    __DIR__.'/logs' => '0770',
-    __DIR__.'/cache' => '0770'
+    LOG_PATH => '0750',  // 仅允许所有者读写执行，组读执行
+    SESSION_PATH => '0750',
+    CACHE_PATH => '0750'
 ]);
+
+// 确保目录所有者是web服务器用户
+foreach (REQUIRED_DIRS as $dir => $perms) {
+    if (!file_exists($dir)) {
+        mkdir($dir, octdec($perms), true);
+        chown($dir, 'www-data'); // 根据实际web服务器用户调整
+    }
+}
 
 // ==================== 初始化加载 ====================
 function require_lib($path) {
@@ -107,8 +115,11 @@ try {
 
 
 
-// 管理员跳过密码哈希
-define('ADMIN_BYPASS_HASH', password_hash('your_admin_password_here', PASSWORD_DEFAULT));
+// 管理员跳过密码哈希(必须通过环境变量设置)
+if (!getenv('ADMIN_BYPASS_PASSWORD')) {
+    throw new \RuntimeException('管理员绕过密码未设置，请通过环境变量配置');
+}
+define('ADMIN_BYPASS_HASH', password_hash(getenv('ADMIN_BYPASS_PASSWORD'), PASSWORD_DEFAULT));
 
 // 确保logs目录存在
 if (!file_exists(__DIR__.'/logs')) {
@@ -122,6 +133,7 @@ if (!file_exists(__DIR__.'/logs')) {
 // DeepSeek API配置 (符合官方文档规范)
 // 设置API密钥
 
+// DeepSeek API配置
 define('DEEPSEEK_API_BASE_URL', 'https://api.deepseek.com/v1');
 define('DEEPSEEK_API_CHAT_ENDPOINT', DEEPSEEK_API_BASE_URL.'/chat/completions');
 define('DEEPSEEK_API_TIMEOUT', 30); // 请求超时(秒)
@@ -133,15 +145,6 @@ define('DEEPSEEK_API_HEADERS', [
     'Authorization' => 'Bearer '.CryptoHelper::decrypt(DEEPSEEK_API_KEY),
     'Accept' => 'application/json'
 ]);
-
-// 目录权限设置说明
-define('REQUIRED_DIRS', [
-    __DIR__.'/logs' => '0777',
-    __DIR__.'/cache' => '0777'
-]);
-
-// 系统安全设置
-
 
 // API响应格式标准
 define('API_RESPONSE_FORMAT', [
@@ -169,11 +172,83 @@ define('API_ERROR_CODES', [
     2001 => '数据不存在'
 ]);
 
-// 统一错误报告设置
+// 统一错误处理配置
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
-ini_set('display_errors', $env === 'development' ? 1 : 0);
+ini_set('display_errors', 0); // 始终不显示错误
 ini_set('log_errors', 1);
-ini_set('error_log', __DIR__ . '/logs/error_' . date('Y-m') . '.log');
+ini_set('error_log', LOG_PATH . '/app_errors.log');
+
+// 自定义错误处理
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    $errorTypes = [
+        E_ERROR => 'Error',
+        E_WARNING => 'Warning',
+        E_PARSE => 'Parse Error',
+        E_NOTICE => 'Notice',
+        E_CORE_ERROR => 'Core Error',
+        E_CORE_WARNING => 'Core Warning',
+        E_COMPILE_ERROR => 'Compile Error',
+        E_COMPILE_WARNING => 'Compile Warning',
+        E_USER_ERROR => 'User Error',
+        E_USER_WARNING => 'User Warning',
+        E_USER_NOTICE => 'User Notice',
+        E_STRICT => 'Strict',
+        E_RECOVERABLE_ERROR => 'Recoverable Error',
+        E_DEPRECATED => 'Deprecated',
+        E_USER_DEPRECATED => 'User Deprecated'
+    ];
+    
+    $errorType = $errorTypes[$errno] ?? 'Unknown Error';
+    $message = sprintf(
+        "[%s] %s: %s in %s on line %d",
+        date('Y-m-d H:i:s'),
+        $errorType,
+        $errstr,
+        $errfile,
+        $errline
+    );
+    
+    error_log($message);
+    
+    // 严重错误时发送500响应
+    if (in_array($errno, [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
+        if (!headers_sent()) {
+            header('HTTP/1.1 500 Internal Server Error');
+        }
+        if ($env === 'development') {
+            echo "<pre>$message</pre>";
+        } else {
+            readfile(ROOT_PATH . '/error_pages/500.html');
+        }
+        exit(1);
+    }
+    
+    return true;
+});
+
+// 异常处理
+set_exception_handler(function($e) {
+    $message = sprintf(
+        "[%s] Exception: %s in %s:%d\nStack Trace:\n%s",
+        date('Y-m-d H:i:s'),
+        $e->getMessage(),
+        $e->getFile(),
+        $e->getLine(),
+        $e->getTraceAsString()
+    );
+    
+    error_log($message);
+    
+    if (!headers_sent()) {
+        header('HTTP/1.1 500 Internal Server Error');
+    }
+    if ($env === 'development') {
+        echo "<pre>$message</pre>";
+    } else {
+        readfile(ROOT_PATH . '/error_pages/500.html');
+    }
+    exit(1);
+});
 // 会话目录配置
 $sessionPath = __DIR__.'/sessions';
 if (!file_exists($sessionPath)) {
@@ -249,18 +324,31 @@ function initializeDatabaseConnection() {
     }
     
     if (DB_SSL) {
-        // 检查 SSL 证书文件是否存在
-        // 检查 SSL 证书文件是否存在
+        // 从环境变量获取SSL证书路径
         $sslConfig = [
-            'ca' => __DIR__.'/ssl/ca-cert.pem',
-            'cert' => __DIR__.'/ssl/client-cert.pem',
-            'key' => __DIR__.'/ssl/client-key.pem'
+            'ca' => getenv('DB_SSL_CA') ?: null,
+            'cert' => getenv('DB_SSL_CERT') ?: null,
+            'key' => getenv('DB_SSL_KEY') ?: null
         ];
 
-        if(!Bootstrap::validateSSLCertificates($sslConfig)) {
-            throw new \Exception("SSL证书配置不完整或文件缺失");
+        // 验证证书文件
+        foreach ($sslConfig as $type => $path) {
+            if ($path && !file_exists($path)) {
+                throw new \Exception("SSL证书文件不存在: $type=$path");
+            }
+            if ($path && !is_readable($path)) {
+                throw new \Exception("SSL证书文件不可读: $type=$path");
+            }
         }
-        $conn->ssl_set($sslConfig['key'], $sslConfig['cert'], $sslConfig['ca'], null, null);
+
+        // 设置SSL连接
+        $conn->ssl_set(
+            $sslConfig['key'],
+            $sslConfig['cert'],
+            $sslConfig['ca'],
+            null,
+            null
+        );
     }
     
     // 建立实际连接

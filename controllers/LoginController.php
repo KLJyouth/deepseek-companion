@@ -11,11 +11,13 @@ use Libs\CryptoHelper;
 use Libs\DatabaseHelper;
 use Libs\RateLimiter;
 use Exception;
+use Services\DeviceManagementService;
 
 class LoginController {
     private $dbHelper;
     private $auth;
     private $rateLimiter;
+    private $deviceService;
     
     const MAX_LOGIN_ATTEMPTS = 5;
     const LOGIN_LOCKOUT_TIME = 1800; // 30分钟
@@ -27,6 +29,7 @@ class LoginController {
         }
         
         $this->dbHelper = $dbHelper;
+        $this->deviceService = new DeviceManagementService($dbHelper);
         
         // 初始化加密功能
         try {
@@ -48,12 +51,27 @@ class LoginController {
         ]);
     }
     
-    public function login($username, $password, $remember = false, $totpCode = null) {
+    public function login(string $username, string $password, bool $remember = false, ?string $totpCode = null): array {
         // 验证CSRF令牌
         $csrfToken = $_POST['csrf_token'] ?? '';
         if (!CryptoHelper::validateCsrfToken($csrfToken)) {
             $this->logFailedAttempt($username, 'invalid_csrf');
             throw new Exception("安全验证失败，请刷新页面重试");
+        }
+
+        // 设备指纹验证
+        $deviceFingerprint = $this->deviceService->generateDeviceFingerprint();
+        if (!$this->deviceService->validateDeviceFingerprint($username, $deviceFingerprint)) {
+            // 发送邮件通知
+            $this->deviceService->sendUnknownDeviceAlert($username);
+            throw new Exception("检测到未知设备登录，已发送确认邮件");
+        }
+
+        // 地理位置异常检测
+        $location = $this->deviceService->getLocationFromIP($_SERVER['REMOTE_ADDR']);
+        if ($this->deviceService->isLocationSuspicious($username, $location)) {
+            $this->logFailedAttempt($username, 'suspicious_location');
+            throw new Exception("检测到异常登录地点，请联系管理员");
         }
 
         // 检查是否超过最大失败次数
@@ -64,11 +82,17 @@ class LoginController {
 
         // 获取用户信息(包含2FA设置)
         $user = $this->dbHelper->getRow(
+            // 兼容ac_users和users表
             "SELECT u.*, tfa.secret as tfa_secret, tfa.recovery_codes as tfa_recovery_codes
-             FROM users u
+             FROM (SELECT * FROM ac_users WHERE username = ? AND status = 1
+                   UNION ALL
+                   SELECT * FROM users WHERE username = ? AND status = 1) u
              LEFT JOIN two_factor_auth tfa ON tfa.user_id = u.id
-             WHERE u.username = ? AND u.status = 1",
-            [['value' => $username, 'encrypt' => false]]
+             LIMIT 1",
+            [
+                ['value' => $username, 'encrypt' => false],
+                ['value' => $username, 'encrypt' => false]
+            ]
         );
 
         if (!$user) {
@@ -82,19 +106,54 @@ class LoginController {
             throw new Exception("用户名或密码错误");
         }
 
-        // 检查2FA
-        if (!empty($user['tfa_secret'])) {
-            if (empty($totpCode)) {
+        // 检查密码是否过期(90天)
+        $lastChanged = strtotime($user['password_changed_at'] ?? '2000-01-01');
+        if (time() - $lastChanged > 7776000) { // 90天
+            throw new Exception("密码已过期，请修改密码");
+        }
+
+        // 检查密码强度并更新
+        $strength = $this->dbHelper->calculatePasswordStrength($user['password']);
+        if (empty($user['password_strength']) || $user['password_strength'] != $strength) {
+            $this->dbHelper->update('users', 
+                ['password_strength' => $strength],
+                'id = ?',
+                [['value' => $user['id'], 'type' => 'i']]
+            );
+        }
+
+        // 记录登录成功
+        $this->dbHelper->update('users', 
+            ['last_login' => date('Y-m-d H:i:s')],
+            'id = ?',
+            [['value' => $user['id'], 'type' => 'i']]
+        );
+
+        // 多因素认证检查
+        if (!empty($user['tfa_secret']) || !empty($user['biometric_data'])) {
+            if (empty($totpCode) && empty($request['biometric_token'])) {
                 return [
                     'requires_2fa' => true,
+                    'supports_biometric' => !empty($user['biometric_data']),
                     'user_id' => $user['id']
                 ];
             }
 
-            $secret = CryptoHelper::decrypt($user['tfa_secret']);
-            if (!$this->verifyTotp($secret, $totpCode) && !$this->useRecoveryCode($user['id'], $totpCode)) {
-                $this->logFailedAttempt($username, 'invalid_2fa', $user['id']);
-                throw new Exception("验证码无效");
+            // 优先验证生物识别
+            if (!empty($user['biometric_data']) && !empty($request['biometric_token'])) {
+                $biometricData = CryptoHelper::decrypt($user['biometric_data']);
+                if (!$this->verifyBiometric($biometricData, $request['biometric_token'])) {
+                    $this->logFailedAttempt($username, 'invalid_biometric', $user['id']);
+                    throw new Exception("生物识别验证失败");
+                }
+            }
+            // 其次验证2FA
+            elseif (!empty($user['tfa_secret'])) {
+                $secret = CryptoHelper::decrypt($user['tfa_secret']);
+                if (!$this->verifyTotp($secret, $totpCode) && !$this->useRecoveryCode($user['id'], $totpCode)) {
+                    $this->logFailedAttempt($username, 'invalid_2fa', $user['id']);
+                    throw new Exception("验证码无效");
+                }
             }
         }
 
@@ -117,22 +176,21 @@ class LoginController {
     
     private function createUserSession($user, $remember) {
         AuthMiddleware::secureSession();
-        
-        $_SESSION = [
-            'user_id' => $user['id'],
-            'username' => $user['username'],
-            'role' => $user['role'],
-            'avatar' => $user['avatar'] ?? '',
-            'initiated' => true,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
-            'last_regenerate' => time()
-        ];
-        
+        // 避免覆盖$_SESSION，逐项赋值
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['role'] = $user['role'];
+        $_SESSION['avatar'] = $user['avatar'] ?? '';
+        $_SESSION['initiated'] = true;
+        $_SESSION['ip_address'] = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $_SESSION['user_agent'] = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+        $_SESSION['last_regenerate'] = time();
+        session_regenerate_id(true);
+
         if ($remember) {
             $this->setRememberToken($user['id']);
         }
-        
+
         $this->dbHelper->update('users', [
             'last_login' => date('Y-m-d H:i:s'),
             'is_online' => 1
@@ -232,7 +290,8 @@ class LoginController {
      */
     private function generateTotpCode($secret, $timestamp) {
         $key = CryptoHelper::base32_decode($secret);
-        $counter = pack('N*', '', $timestamp);
+        // 8字节大端序
+        $counter = pack('N*', 0, $timestamp);
         $hash = hash_hmac('sha1', $counter, $key, true);
         
         $offset = ord($hash[19]) & 0xf;
@@ -249,6 +308,72 @@ class LoginController {
     /**
      * 使用恢复代码
      */
+    /**
+     * 验证生物识别令牌
+     */
+    private function verifyBiometric($storedData, $token) {
+        try {
+            // 解码存储的生物识别数据
+            $data = json_decode($storedData, true);
+            if (!$data || empty($data['publicKey']) || empty($data['algorithm'])) {
+                return false;
+            }
+
+            // 使用公钥验证签名
+            $publicKey = openssl_pkey_get_public($data['publicKey']);
+            $verified = openssl_verify(
+                $data['challenge'],
+                base64_decode($token),
+                $publicKey,
+                $data['algorithm']
+            );
+            
+            openssl_free_key($publicKey);
+            return $verified === 1;
+        } catch (Exception $e) {
+            error_log("生物识别验证错误: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 验证密码强度
+     */
+    private function validatePasswordStrength(string $password): bool {
+        // 至少12个字符
+        if (strlen($password) < 12) {
+            return false;
+        }
+        
+        // 必须包含大写字母
+        if (!preg_match('/[A-Z]/', $password)) {
+            return false;
+        }
+        
+        // 必须包含小写字母
+        if (!preg_match('/[a-z]/', $password)) {
+            return false;
+        }
+        
+        // 必须包含数字
+        if (!preg_match('/[0-9]/', $password)) {
+            return false;
+        }
+        
+        // 必须包含特殊字符
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            return false;
+        }
+        
+        // 检查常见弱密码
+        $commonPasswords = ['password', '123456', 'qwerty', 'admin'];
+        if (in_array(strtolower($password), $commonPasswords)) {
+            return false;
+        }
+        
+        return true;
+    }
+
     private function useRecoveryCode($userId, $code) {
         // 获取用户所有未使用的恢复代码
         $codes = $this->dbHelper->getRows(

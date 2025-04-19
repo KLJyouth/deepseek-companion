@@ -57,4 +57,32 @@ class SecurityDashboardController {
         $alpha = min(0.8, $score / 100);
         return "rgba(255, 0, 0, $alpha)";
     }
+
+    /**
+     * 记录管理员安全操作
+     */
+    private function logSecurityAction(string $action, array $data = []): void {
+        $logData = [
+            'admin_id' => $_SESSION['admin_id'] ?? null,
+            'action' => $action,
+            'ip' => $_SERVER['REMOTE_ADDR'],
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+            'data' => json_encode($data),
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+        
+        $this->db->insert('admin_security_logs', $logData);
+    }
+
+    /**
+     * 获取最近安全事件
+     */
+    public function getRecentSecurityEvents(int $limit = 50): array {
+        return $this->db->query(
+            "SELECT * FROM admin_security_logs 
+             ORDER BY timestamp DESC 
+             LIMIT ?",
+            [['value' => $limit, 'type' => 'i']]
+        );
+    }
 }

@@ -27,45 +27,7 @@ class AuthMiddleware {
         return true;
     }
 
-    public static function verifyContractAccess(int $contractId): void {
-        self::checkAuth();
-        $db = DatabaseHelper::getInstance();
-        $contract = $db->queryFirst("SELECT parties FROM contracts WHERE id = ?", [$contractId]);
-        
-        if (!in_array($_SESSION['user_id'], json_decode($contract['parties'], true), true)) {
-            throw new SecurityException('合同访问权限不足');
-        }
-    }
 
-    public static function verifyTemplateOwner(int $templateId): void {
-        self::checkAuth();
-        $db = DatabaseHelper::getInstance();
-        $template = $db->queryFirst("SELECT created_by FROM contract_templates WHERE id = ?", [$templateId]);
-        
-        if ($template['created_by'] !== $_SESSION['user_id']) {
-            throw new SecurityException('模板操作权限不足');
-        }
-    }
-
-    public static function verifyContractAccess(int $contractId): void {
-        self::checkAuth();
-        $db = DatabaseHelper::getInstance();
-        $contract = $db->queryFirst("SELECT parties FROM contracts WHERE id = ?", [$contractId]);
-        
-        if (!in_array($_SESSION['user_id'], json_decode($contract['parties'], true), true)) {
-            throw new SecurityException('合同访问权限不足');
-        }
-    }
-
-    public static function verifyTemplateOwner(int $templateId): void {
-        self::checkAuth();
-        $db = DatabaseHelper::getInstance();
-        $template = $db->queryFirst("SELECT created_by FROM contract_templates WHERE id = ?", [$templateId]);
-        
-        if ($template['created_by'] !== $_SESSION['user_id']) {
-            throw new SecurityException('模板操作权限不足');
-        }
-    }
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }

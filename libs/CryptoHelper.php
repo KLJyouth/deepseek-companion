@@ -556,6 +556,58 @@ class CryptoHelper {
     }
 
     /**
+     * 生成生物识别挑战数据
+     * @return array 包含挑战数据和密钥对
+     */
+    public static function generateBiometricChallenge(): array {
+        $keyPair = openssl_pkey_new([
+            'digest_alg' => 'sha512',
+            'private_key_bits' => 2048,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA
+        ]);
+        
+        $details = openssl_pkey_get_details($keyPair);
+        $challenge = bin2hex(random_bytes(32));
+        
+        return [
+            'publicKey' => $details['key'],
+            'privateKey' => openssl_pkey_export($keyPair, $privateKey) ? $privateKey : null,
+            'challenge' => $challenge,
+            'algorithm' => 'RSA-SHA512'
+        ];
+    }
+
+    /**
+     * 验证生物识别签名
+     * @param string $publicKey 公钥
+     * @param string $challenge 原始挑战数据
+     * @param string $signature 签名数据
+     * @param string $algorithm 签名算法
+     * @return bool 验证结果
+     */
+    public static function verifyBiometricSignature(
+        string $publicKey, 
+        string $challenge, 
+        string $signature, 
+        string $algorithm = 'RSA-SHA512'
+    ): bool {
+        $key = openssl_pkey_get_public($publicKey);
+        if ($key === false) {
+            return false;
+        }
+        
+        $result = openssl_verify(
+            $challenge,
+            base64_decode($signature),
+            $key,
+            $algorithm
+        );
+        
+        openssl_free_key($key);
+        return $result === 1;
+    }
+
+    /**
      * 更新健康检查以包含量子加密测试
      */
     public static function healthCheck(): array {
