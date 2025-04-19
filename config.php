@@ -18,7 +18,7 @@ if (\file_exists(__DIR__ . '/.env')) {
         $k = \trim($k);
         $v = \trim($v);
         if (!\getenv($k)) {
-            \putenv("$k=$v");
+            // 彻底移除 putenv，仅设置 $_ENV
             $_ENV[$k] = $v;
         }
     }
