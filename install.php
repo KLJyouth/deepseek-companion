@@ -34,8 +34,19 @@ function check_dirs($dirs = []) {
 }
 
 function write_env_file($data) {
+    // 读取已存在的.env变量，保留未被覆盖的内容
+    $existing = [];
+    if (file_exists(ENV_FILE)) {
+        foreach (file(ENV_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
+            [$k, $v] = explode('=', $line, 2);
+            $existing[$k] = $v;
+        }
+    }
+    // 合并新变量，优先使用新值
+    $merged = array_merge($existing, $data);
     $lines = [];
-    foreach ($data as $k => $v) {
+    foreach ($merged as $k => $v) {
         $lines[] = "$k=$v";
     }
     file_put_contents(ENV_FILE, implode(PHP_EOL, $lines));

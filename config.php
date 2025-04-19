@@ -12,9 +12,15 @@ define('ROOT_PATH', realpath(__DIR__));
 if (file_exists(__DIR__ . '/.env')) {
     $lines = file(__DIR__ . '/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
+        $line = trim($line);
+        if ($line === '' || strpos($line, '#') === 0 || strpos($line, '=') === false) continue;
         [$k, $v] = explode('=', $line, 2);
-        if (!getenv($k)) putenv("$k=$v");
+        $k = trim($k);
+        $v = trim($v);
+        if (!getenv($k)) {
+            putenv("$k=$v");
+            $_ENV[$k] = $v;
+        }
     }
 }
 
