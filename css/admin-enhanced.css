@@ -1,0 +1,51 @@
+/* 仪表盘卡片增强样式 */
+.dashboard-card {
+    border: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+}
+
+.dashboard-card .card-body {
+    padding: 1.5rem;
+    position: relative;
+}
+
+.dashboard-card .stat-icon {
+    position: absolute;
+    right: 1.5rem;
+    top: 1.5rem;
+    font-size: 2rem;
+    opacity: 0.2;
+}
+
+/* 统计卡片颜色主题 */
+.card-primary {
+    background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+    border-left: 4px solid rgba(255,255,255,0.3);
+}
+
+.card-success {
+    background: linear-gradient(135deg, #1cc88a 0%, #13855c 100%);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .dashboard-card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* 图表容器优化 */
+.chart-container {
+    background: #fff;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}

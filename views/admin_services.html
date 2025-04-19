@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务管理系统</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <div class="sidebar">
+            <ul class="service-menu">
+                <li><a href="#security" class="active">安全服务</a></li>
+                <li><a href="#analytics">分析服务</a></li>
+                <li><a href="#incident">事件响应</a></li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div id="security" class="service-panel">
+                <h2>安全服务管理</h2>
+                <div class="service-status"></div>
+                <div class="service-config"></div>
+            </div>
+
+            <div id="analytics" class="service-panel" style="display:none;">
+                <h2>分析服务管理</h2>
+                <div class="service-stats"></div>
+                <div class="service-config"></div>
+            </div>
+
+            <div id="incident" class="service-panel" style="display:none;">
+                <h2>事件响应管理</h2>
+                <div class="incident-list"></div>
+                <div class="service-config"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合同管理系统</title>
+    <link rel="stylesheet" href="/css/admin-enhanced.css">
+</head>
+<body>
+    <% include sidebar.html %>
+
+    <div class="main-content">
+        <div class="header">
+            <h2><i class="icon-contract"></i> 合同生命周期管理</h2>
+            <button class="btn-primary" @click="showCreateTemplate">新建模板</button>
+        </div>
+
+        <!-- 模板管理区域 -->
+        <div class="card template-manager">
+            <div class="search-box">
+                <input type="text" placeholder="搜索模板名称" v-model="searchQuery">
+                <select v-model="filterStatus">
+                    <option value="all">全部状态</option>
+                    <option value="draft">草稿</option>
+                    <option value="published">已发布</option>
+                </select>
+            </div>
+            
+            <div class="template-list">
+                <div v-for="template in filteredTemplates" :key="template.id" class="template-item">
+                    <div class="template-info">
+                        <h3>{{ template.name }}</h3>
+                        <span class="status-badge" :class="template.status">{{ template.status }}</span>
+                        <p>最后更新：{{ formatDate(template.updated_at) }}</p>
+                    </div>
+                    <div class="template-actions">
+                        <button class="btn-icon" @click="editTemplate(template.id)">
+                            <i class="icon-edit"></i>
+                        </button>
+                        <button class="btn-icon" @click="deleteTemplate(template.id)">
+                            <i class="icon-delete"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 合同签署看板 -->
+        <div class="dashboard-cards">
+            <div class="card">
+                <h3>待签署合同</h3>
+                <ul class="contract-list">
+                    <li v-for="contract in pendingContracts" :key="contract.id">
+                        {{ contract.parties.join(' ↔ ') }}
+                        <button class="btn-link" @click="sendReminder(contract.id)">发送提醒</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>签署数据统计</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.total }}</div>
+                        <div class="stat-label">总合同数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ stats.signed }}</div>
+                        <div class="stat-label">已签署</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/contract-admin.js"></script>
+
+    <!-- 模板编辑器模态框 -->
+    <div class="modal-editor" v-if="showEditor">
+        <div class="editor-container">
+            <div class="editor-header">
+                <h3>{{ editingTemplate ? '编辑模板' : '新建模板' }}</h3>
+                <button @click="closeEditor">×</button>
+            </div>
+            <div id="contractEditor"></div>
+            <div class="editor-footer">
+                <button class="btn-primary" @click="saveTemplate">保存模板</button>
+                <button class="btn-secondary" @click="closeEditor">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    .modal-editor {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+    }
+
+    .editor-container {
+        width: 80%;
+        height: 80%;
+        background: white;
+        margin: 5% auto;
+        padding: 20px;
+        border-radius: 8px;
+    }
+
+    #contractEditor {
+        height: calc(100% - 100px);
+        margin: 20px 0;
+    }
+    </style>
+</body>
+</html>

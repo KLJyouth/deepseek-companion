@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>智能防御仪表盘</title>
+    <script src="/js/three.min.js"></script>
+    <style>
+        #globe-container { width: 70%; height: 70vh; float: left; }
+        #stats-panel { 
+            width: 28%; 
+            height: 70vh; 
+            background: rgba(0,0,0,0.8); 
+            padding: 1%;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+        .threat-node {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transition: all 0.5s;
+        }
+        #control-panel {
+            clear: both;
+            padding: 20px;
+            background: #1a1a1a;
+        }
+        .neural-activation {
+            height: 10px;
+            background: #333;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="globe-container"></div>
+    <div id="stats-panel">
+        <h3>实时威胁矩阵</h3>
+        <div id="threat-stream"></div>
+        <div class="neural-activation" id="lstm-activation"></div>
+        <canvas id="attack-pattern-chart"></canvas>
+    </div>
+
+    <div id="control-panel">
+        <label>防御响应级别: <input type="range" id="defense-level" min="0" max="10"></label>
+        <button onclick="toggleAutoDefense()">AI自动防御</button>
+        <button onclick="exportThreatReport()">生成态势报告</button>
+    </div>
+
+    <script>
+        let scene, camera, renderer, globe;
+        const attackPaths = [];
+        const WS_URL = 'ws://localhost:8080/threat-feed';
+
+        initThreeJS();
+        setupWebSocket();
+
+        function initThreeJS() {
+            // 三维地球初始化代码
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(document.getElementById('globe-container').clientWidth, 700);
+            document.getElementById('globe-container').appendChild(renderer.domElement);
+
+            // 创建带纹理的地球模型
+            const geometry = new THREE.SphereGeometry(5, 32, 32);
+            const texture = new THREE.TextureLoader().load('/textures/earthmap.jpg');
+            const material = new THREE.MeshPhongMaterial({ map: texture });
+            globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+
+            // 添加环境光
+            scene.add(new THREE.AmbientLight(0x404040));
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5,3,5);
+            scene.add(light);
+
+            camera.position.z = 15;
+            animate();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            globe.rotation.y += 0.002;
+            renderer.render(scene, camera);
+        }
+
+        function setupWebSocket() {
+            const ws = new WebSocket(WS_URL);
+            ws.onmessage = function(event) {
+                const threatData = JSON.parse(event.data);
+                visualizeThreat(threatData);
+                updateStatsPanel(threatData);
+            };
+
+            ws.onclose = function() {
+                console.error('威胁数据流连接中断');
+            };
+        }
+
+        function visualizeThreat(data) {
+            // 三维攻击路径可视化逻辑
+            const origin = sphericalToCartesian(data.geo.latitude, data.geo.longitude);
+            const attackLine = createAttackLine(origin);
+            scene.add(attackLine);
+            attackPaths.push(attackLine);
+
+            if(attackPaths.length > 50) {
+                scene.remove(attackPaths.shift());
+            }
+        }
+
+        function updateStatsPanel(data) {
+            // 实时统计面板更新逻辑
+            document.getElementById('threat-stream').innerHTML += 
+                `<div class="threat-alert">
+                    ${new Date().toLocaleTimeString()} - 
+                    ${data.geo.city} (${data.risk_score.toFixed(1)}分)
+                </div>`;
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = document.getElementById('globe-container').clientWidth / 700;
+            camera.updateProjectionMatrix();
+            renderer.setSize(document.getElementById('globe-container').clientWidth, 700);
+        });
+    </script>
+</body>
+</html>

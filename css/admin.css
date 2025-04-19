@@ -1,0 +1,165 @@
+:root {
+    --primary-color: #4e73df;
+    --secondary-color: #858796;
+    --accent-color: #f8f9fc;
+    --text-color: #5a5c69;
+    --card-bg: #ffffff;
+    --sidebar-bg: #343a40;
+    --sidebar-width: 16rem;
+}
+
+body {
+    font-family: 'Noto Sans SC', sans-serif;
+    color: var(--text-color);
+    background-color: var(--accent-color);
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    z-index: 100;
+    background: var(--sidebar-bg);
+    transition: all 0.3s;
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.2rem;
+    border-radius: 0.25rem;
+}
+
+.sidebar .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-link.active {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar .nav-link i {
+    margin-right: 0.5rem;
+}
+
+/* 主内容区 */
+main {
+    margin-left: var(--sidebar-width);
+    padding-top: 1.5rem;
+    width: calc(100% - var(--sidebar-width));
+}
+
+/* 卡片样式 */
+.card {
+    border: none;
+    border-radius: 0.35rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+    font-weight: 600;
+}
+
+/* 图表容器 */
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* 表格样式 */
+.table {
+    font-size: 0.9rem;
+}
+
+.table th {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .sidebar {
+        margin-left: -16rem;
+    }
+    
+    .sidebar.active {
+        margin-left: 0;
+    }
+    
+    main {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* ECharts地图容器 */
+#userMap {
+    min-height: 400px;
+}
+
+/* API状态指示器 */
+#apiStatus.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-left: 4px solid #28a745;
+}
+
+#apiStatus.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-left: 4px solid #dc3545;
+}
+
+/* 表单控件 */
+.form-range::-webkit-slider-thumb {
+    background: var(--primary-color);
+}
+
+.form-range::-moz-range-thumb {
+    background: var(--primary-color);
+}
+
+.form-range::-ms-thumb {
+    background: var(--primary-color);
+}
+
+/* 按钮悬停效果 */
+.btn-primary:hover {
+    background-color: #2e59d9;
+    border-color: #2e59d9;
+}
+
+/* 加载动画 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}

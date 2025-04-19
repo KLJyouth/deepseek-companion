@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI伴侣 - 管理后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/admin.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body class="bg-light">
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏导航 -->
+            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4">
+                        <h4 class="text-white">AI伴侣管理</h4>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#dashboard" data-bs-toggle="tab">
+                                <i class="bi bi-speedometer2 me-2"></i>仪表盘
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#settings" data-bs-toggle="tab">
+                                <i class="bi bi-gear me-2"></i>模型设置
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#analytics" data-bs-toggle="tab">
+                                <i class="bi bi-graph-up me-2"></i>数据分析
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#users" data-bs-toggle="tab">
+                                <i class="bi bi-people me-2"></i>用户管理
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- 主内容区 -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="tab-content">
+                    <!-- 仪表盘 -->
+                    <div class="tab-pane fade show active" id="dashboard">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">系统概览</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <div class="btn-group me-2">
+                                    <button class="btn btn-sm btn-outline-secondary">导出</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 统计卡片 -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card text-white bg-primary mb-3">
+                                    <div class="card-body">
+                                        <h5 class="card-title">总用户数</h5>
+                                        <h2 class="card-text" id="totalUsers">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-success mb-3">
+                                    <div class="card-body">
+                                        <h5 class="card-title">活跃用户</h5>
+                                        <h2 class="card-text" id="activeUsers">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-info mb-3">
+                                    <div class="card-body">
+                                        <h5 class="card-title">在线用户</h5>
+                                        <h2 class="card-text" id="onlineUsers">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-warning mb-3">
+                                    <div class="card-body">
+                                        <h5 class="card-title">API调用</h5>
+                                        <h2 class="card-text" id="apiCalls">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 图表区 -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5>API调用统计</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <canvas id="apiChart" height="300"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 模型设置 -->
+                    <div class="tab-pane fade" id="settings">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">模型参数设置</h1>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <form id="modelSettingsForm">
+                                            <div class="mb-3">
+                                                <label for="modelSelect" class="form-label">模型类型</label>
+                                                <select class="form-select" id="modelSelect">
+                                                    <option value="deepseek-chat">DeepSeek Chat</option>
+                                                    <option value="deepseek-v2">DeepSeek V2</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="maxTokens" class="form-label">最大Token数: <span id="maxTokensValue">500</span></label>
+                                                <input type="range" class="form-range" id="maxTokens" min="100" max="2000" step="100" value="500">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="temperature" class="form-label">温度参数: <span id="temperatureValue">0.7</span></label>
+                                                <input type="range" class="form-range" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">保存设置</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">API状态</h5>
+                                        <div id="apiStatus" class="alert alert-success">
+                                            <i class="bi bi-check-circle-fill"></i> DeepSeek API 连接正常
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">当前Endpoint</label>
+                                            <input type="text" class="form-control" value="https://api.deepseek.com/v1/chat/completions" readonly>
+                                        </div>
+                                        <button class="btn btn-outline-secondary">测试连接</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据分析 -->
+                    <div class="tab-pane fade" id="analytics">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">数据分析</h1>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5>用户分布</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="userMap" style="width: 100%; height: 500px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>使用时段分析</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="usageChart" style="width: 100%; height: 400px;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 用户管理 -->
+                    <div class="tab-pane fade" id="users">
+                        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                            <h1 class="h2">用户管理</h1>
+                            <div class="btn-toolbar mb-2 mb-md-0">
+                                <button class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-plus"></i> 添加用户
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>用户名</th>
+                                        <th>注册时间</th>
+                                        <th>最后登录</th>
+                                        <th>对话次数</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userTableBody">
+                                    <!-- 用户数据将通过JS动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能陪伴</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <div class="companion-model" id="companionModel"></div>
+        
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="header-top">
+                    <h1>AI 智能陪伴</h1>
+                    <button id="nameBtn" class="name-btn">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M12 4a4 4 0 014 4 4 4 0 01-4 4 4 4 0 01-4-4 4 4 0 014-4m0 10c4.42 0 8 1.79 8 4v2H4v-2c0-2.21 3.58-4 8-4z"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="controls">
+                    <div class="control-group">
+                        <label>伴侣性别:</label>
+                        <div class="gender-selector">
+                            <button class="gender-btn active" data-gender="male">男</button>
+                            <button class="gender-btn" data-gender="female">女</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>态度:</label>
+                        <input type="range" id="attitudeSlider" min="0" max="2" step="0.1" value="1">
+                        <span id="attitudeValue">中性</span>
+                    </div>
+                    <div class="control-group">
+                        <label>记忆功能:</label>
+                        <label class="switch">
+                            <input type="checkbox" id="memoryToggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="mood-indicator"></div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages"></div>
+            
+            <div class="chat-input">
+                <input type="text" id="messageInput" placeholder="和你的AI伴侣聊天...">
+                <button id="sendButton">
+                    <svg viewBox="0 0 24 24" width="24" height="24">
+                        <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/companion-model.js"></script>
+    <!-- 姓名设置对话框 -->
+    <div id="nameDialog" class="dialog-overlay">
+        <div class="dialog-content">
+            <h3>设置你的名字</h3>
+            <input type="text" id="nameInput" placeholder="输入你的名字">
+            <div class="dialog-buttons">
+                <button id="confirmName" class="dialog-btn primary">确认</button>
+                <button id="cancelName" class="dialog-btn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/chat.js"></script>
+</body>
+</html>
