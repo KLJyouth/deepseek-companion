@@ -546,22 +546,6 @@ final class CryptoHelper {
     }
 
     /**
-     * 区块链存证记录
-     */
-    private static function logKeyGeneration(): void {
-        $txData = [
-            'key_id' => bin2hex(random_bytes(16)),
-            'public_key_hash' => hash('sha256', self::$pqcKeyPair['public_key']),
-            'generated_at' => date('c'),
-            'expires_at' => date('c', self::$pqcKeyPair['expires_at']),
-            'risk_level' => self::getRiskLevel()
-        ];
-
-        file_put_contents('/tmp/key_gen.log', json_encode($txData)."\n", FILE_APPEND);
-        // 实际项目中应调用区块链API记录交易
-    }
-
-    /**
      * 量子安全加密(混合加密方案)
      * @param string $data 要加密的原始数据
      * @return string 加密后的数据(base64编码)
@@ -708,46 +692,10 @@ final class CryptoHelper {
             $algorithm
         );
         
-        openssl_free_key($key);
-        return $result === 1;
-    }
-
-    /**
-     * 更新健康检查以包含量子加密测试
-     */
-    public static function healthCheck(): array {
-        $result = parent::healthCheck();
-        
-        // 测试量子加密功能(如果扩展可用)
-        if (extension_loaded('pqcrypto')) {
-            try {
-                self::initPQC();
-                $testString = 'quantum_test_' . microtime(true);
-                $encrypted = self::quantumEncrypt($testString);
-                $decrypted = self::quantumDecrypt($encrypted);
-                
-                $result['quantum'] = [
-                    'status' => $decrypted === $testString ? 'healthy' : 'failed',
-                    'test_string' => $testString,
-                    'algorithm' => 'AES-256-CBC+Kyber1024',
-                    'key_size' => [
-                        'public' => strlen(self::$pqcKeyPair['public_key']),
-                        'private' => strlen(self::$pqcKeyPair['private_key'])
-                    ]
-                ];
-            } catch (\Exception $e) {
-                $result['quantum'] = [
-                    'status' => 'failed',
-                    'error' => $e->getMessage()
-                ];
-            }
-        } else {
-            $result['quantum'] = [
-                'status' => 'not_available',
-                'message' => 'pqcrypto扩展未安装'
-            ];
+        // openssl_free_key 在 PHP 8.0+ 已弃用，可省略
+        if (function_exists('openssl_free_key')) {
+            @openssl_free_key($key);
         }
-        
-        return $result;
+        return $result === 1;
     }
 }

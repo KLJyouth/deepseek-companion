@@ -62,6 +62,19 @@ define('ENCRYPTION_METHOD', env('ENCRYPTION_METHOD', 'quantum'));
 define('ENCRYPTION_KEY', env('ENCRYPTION_KEY', bin2hex(random_bytes(16)))); // For legacy encryption
 define('ENCRYPTION_IV', env('ENCRYPTION_IV', bin2hex(random_bytes(8)))); // For legacy encryption
 
+// 初始化加密组件，避免未初始化报错
+try {
+    // ENCRYPTION_KEY 32字节，ENCRYPTION_IV 12字节（GCM）或16字节（CBC），此处按GCM优先
+    $key = ENCRYPTION_KEY;
+    $iv = ENCRYPTION_IV;
+    if (strlen($key) === 32 && (strlen($iv) === 12 || strlen($iv) === 16)) {
+        \Libs\CryptoHelper::init($key, $iv);
+    }
+} catch (\Throwable $e) {
+    error_log('加密组件初始化失败: ' . $e->getMessage());
+    // 可选：降级或终止
+}
+
 // Quantum encryption settings
 define('QUANTUM_KEY_ROTATION', env('QUANTUM_KEY_ROTATION', 3600)); // Rotation interval in seconds
 define('QUANTUM_MAX_KEY_VERSIONS', env('QUANTUM_MAX_KEY_VERSIONS', 3)); // Number of old keys to retain
