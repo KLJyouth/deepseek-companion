@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stanfai-合同管理</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="contract-container">
+        <h1>合同管理</h1>
+        
+        <div class="contract-actions">
+            <button id="createContract" class="btn-primary">新建合同</button>
+            <button id="refreshList" class="btn-secondary">刷新列表</button>
+        </div>
+
+        <div class="contract-filter">
+            <select id="statusFilter">
+                <option value="all">全部状态</option>
+                <option value="draft">草稿</option>
+                <option value="pending">待签署</option>
+                <option value="signed">已签署</option>
+                <option value="archived">已归档</option>
+            </select>
+            <input type="text" id="searchInput" placeholder="搜索合同...">
+        </div>
+
+        <div class="contract-list">
+            <table>
+                <thead>
+                    <tr>
+                        <th>合同编号</th>
+                        <th>合同名称</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="contractTableBody">
+                    <!-- 合同列表将通过JS动态加载 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="../js/contract.js"></script>
+</body>
+</html>

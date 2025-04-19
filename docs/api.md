@@ -142,3 +142,112 @@ sequenceDiagram
 1. 批量处理数据，减少API调用次数
 2. 实现本地缓存，对重复数据直接返回缓存结果
 3. 使用WebSocket连接实现实时分析
+
+## 5. 合同管理API
+
+### 5.1 合同模板管理
+- `GET /api/contract-templates` - 获取合同模板列表
+  - 响应:
+    ```json
+    [
+      {
+        "id": "模板ID",
+        "name": "模板名称",
+        "created_at": "创建时间",
+        "created_by": "创建人ID"
+      }
+    ]
+    ```
+
+### 5.2 合同管理
+- `GET /api/contracts` - 获取合同列表
+  - 参数:
+    - `status` - 合同状态(draft/pending/signed/archived)
+    - `q` - 搜索关键词
+  - 响应:
+    ```json
+    [
+      {
+        "id": "合同ID",
+        "name": "合同名称",
+        "status": "合同状态",
+        "created_at": "创建时间",
+        "signed_at": "签署时间",
+        "parties": ["参与方信息"]
+      }
+    ]
+    ```
+
+- `POST /api/contracts` - 创建新合同
+  - 请求体:
+    ```json
+    {
+      "name": "合同名称",
+      "template_id": "模板ID",
+      "content": "合同内容",
+      "parties": [
+        {
+          "name": "参与方名称",
+          "email": "参与方邮箱"
+        }
+      ]
+    }
+    ```
+
+- `GET /api/contracts/{id}` - 获取合同详情
+  - 响应:
+    ```json
+    {
+      "id": "合同ID",
+      "name": "合同名称",
+      "content": "合同内容",
+      "status": "合同状态",
+      "signatures": [
+        {
+          "user_id": "签署人ID",
+          "method": "签署方式",
+          "signed_at": "签署时间"
+        }
+      ],
+      "risk_analysis": {
+        "level": "风险等级",
+        "details": "风险详情"
+      }
+    }
+    ```
+
+### 5.3 合同签署与归档
+- `POST /api/contracts/{id}/sign` - 签署合同
+  - 请求体:
+    ```json
+    {
+      "signature": "签名数据",
+      "algorithm": "签名算法(RSA-SHA512/BIOMETRIC)"
+    }
+    ```
+
+- `POST /api/contracts/{id}/archive` - 归档合同
+  - 响应:
+    ```json
+    {
+      "success": true,
+      "archive_id": "归档ID",
+      "blockchain_proof": "区块链存证哈希"
+    }
+    ```
+
+### 5.4 合同风险分析
+- `GET /api/contracts/{id}/risk-analysis` - 获取合同风险分析
+  - 响应:
+    ```json
+    {
+      "risk_level": "high|medium|low",
+      "risky_clauses": [
+        {
+          "clause": "条款内容",
+          "risk_type": "风险类型",
+          "suggestion": "修改建议"
+        }
+      ]
+    }
+    ```

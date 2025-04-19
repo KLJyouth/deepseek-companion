@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stanfai-合同签署</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="contract-sign-container">
+        <h1>合同签署</h1>
+        
+        <div class="contract-info">
+            <h2 id="contractTitle"></h2>
+            <p>合同编号: <span id="contractId"></span></p>
+            <p>创建时间: <span id="createdAt"></span></p>
+        </div>
+
+        <div class="contract-content" id="contractContent">
+            <!-- 合同内容将通过JS动态加载 -->
+        </div>
+
+        <div class="sign-section">
+            <h3>签署信息</h3>
+            <div class="sign-method">
+                <label>
+                    <input type="radio" name="signMethod" value="digital" checked> 数字签名
+                </label>
+                <label>
+                    <input type="radio" name="signMethod" value="biometric"> 生物识别
+                </label>
+            </div>
+
+            <div id="digitalSignArea">
+                <label for="signatureData">请输入签名:</label>
+                <canvas id="signaturePad" width="400" height="200"></canvas>
+                <button type="button" id="clearSignature">清除签名</button>
+            </div>
+
+            <div id="biometricSignArea" style="display:none;">
+                <p>请使用已注册的生物识别方式进行签署</p>
+                <button type="button" id="startBiometricSign">开始生物识别</button>
+            </div>
+
+            <div class="sign-actions">
+                <button type="button" id="submitSign" class="btn-primary">确认签署</button>
+                <button type="button" id="cancelSign" class="btn-secondary">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/signature.min.js"></script>
+    <script src="../js/contract.js"></script>
+</body>
+</html>

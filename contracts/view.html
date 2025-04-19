@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>stanfai-合同详情</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="contract-view-container">
+        <h1>合同详情</h1>
+        
+        <div class="contract-header">
+            <h2 id="contractTitle"></h2>
+            <div class="contract-meta">
+                <p>合同编号: <span id="contractId"></span></p>
+                <p>状态: <span id="contractStatus" class="status-badge"></span></p>
+                <p>创建时间: <span id="createdAt"></span></p>
+                <p>签署时间: <span id="signedAt"></span></p>
+                <p>归档时间: <span id="archivedAt"></span></p>
+            </div>
+        </div>
+
+        <div class="contract-content" id="contractContent">
+            <!-- 合同内容将通过JS动态加载 -->
+        </div>
+
+        <div class="signatures-section">
+            <h3>签署记录</h3>
+            <table id="signaturesTable">
+                <thead>
+                    <tr>
+                        <th>签署人</th>
+                        <th>签署方式</th>
+                        <th>签署时间</th>
+                        <th>签名验证</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 签署记录将通过JS动态加载 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="risk-analysis-section" id="riskAnalysisSection">
+            <h3>AI风险分析</h3>
+            <div id="riskAnalysisResult">
+                <!-- 风险分析结果将通过JS动态加载 -->
+            </div>
+        </div>
+
+        <div class="contract-actions">
+            <button type="button" id="downloadContract" class="btn-primary">下载合同</button>
+            <button type="button" id="backToList" class="btn-secondary">返回列表</button>
+        </div>
+    </div>
+
+    <script src="../js/contract.js"></script>
+</body>
+</html>
