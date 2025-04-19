@@ -97,33 +97,42 @@ SQL;
      * 安全查询方法
      */
     public function secureQuery($sql, $params = []) {
-        $stmt = $this->conn->prepare($sql);
-        if (!$stmt) {
-            throw new Exception("预处理失败: " . $this->conn->error);
-        }
-        
-        // 绑定参数
-        if (!empty($params)) {
-            $types = '';
-            $values = [];
-            
-            foreach ($params as $param) {
-                // 对敏感数据自动加密
-                if (isset($param['encrypt']) && $param['encrypt']) {
-                    $value = CryptoHelper::encrypt($param['value']);
-                    $types .= 's';
-                    $values[] = $value;
-                } else {
-                    $types .= $param['type'] ?? 's';
-                    $values[] = $param['value'];
-                }
+        try {
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                throw new Exception("预处理失败: " . $this->conn->error);
             }
             
-            $stmt->bind_param($types, ...$values);
+            if (!empty($params)) {
+                $types = '';
+                $values = [];
+                $bind_params = [];
+                
+                foreach ($params as $param) {
+                    if (isset($param['encrypt']) && $param['encrypt']) {
+                        $value = CryptoHelper::encrypt($param['value']);
+                    } else {
+                        $value = $param['value'];
+                    }
+                    
+                    $types .= $param['type'] ?? 's';
+                    $values[] = $value;
+                    $bind_params[] = &$values[count($values) - 1];
+                }
+                
+                array_unshift($bind_params, $types);
+                call_user_func_array([$stmt, 'bind_param'], $bind_params);
+            }
+            
+            if (!$stmt->execute()) {
+                throw new Exception("SQL执行失败: " . $stmt->error);
+            }
+            
+            return $stmt;
+        } catch (Exception $e) {
+            error_log("数据库查询错误: " . $e->getMessage());
+            throw $e;
         }
-        
-        $stmt->execute();
-        return $stmt;
     }
     
     /**

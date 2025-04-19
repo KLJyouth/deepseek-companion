@@ -56,21 +56,12 @@ class LoginController {
             throw new Exception("安全验证失败，请刷新页面重试");
         }
 
-        // 检查2FA配置
-        $is2faEnabled = false;
-        
-        // 检查账户是否被锁定
+        // 检查是否超过最大失败次数
         if ($this->isAccountLocked($username)) {
             $this->logFailedAttempt($username, 'account_locked');
-            throw new Exception("账户已锁定，请30分钟后再试");
+            throw new Exception("账户已锁定，请" . (self::LOGIN_LOCKOUT_TIME/60) . "分钟后再试");
         }
 
-        // 检查2FA速率限制
-        if ($totpCode !== null) {
-            $identifier = '2fa_attempt_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
-            $this->rateLimiter->checkRateLimit($identifier);
-        }
-        
         // 获取用户信息(包含2FA设置)
         $user = $this->dbHelper->getRow(
             "SELECT u.*, tfa.secret as tfa_secret, tfa.recovery_codes as tfa_recovery_codes
@@ -79,26 +70,20 @@ class LoginController {
              WHERE u.username = ? AND u.status = 1",
             [['value' => $username, 'encrypt' => false]]
         );
-        
+
         if (!$user) {
             $this->logFailedAttempt($username, 'user_not_found');
             throw new Exception("用户名或密码错误");
         }
 
-        // 检查2FA状态
-        $is2faEnabled = !empty($user['tfa_secret']);
-        
-        // 检查基础认证速率限制
-        try {
-            $identifier = RateLimiter::getIdentifier($user['id']);
-            $this->rateLimiter->checkRateLimit($identifier);
-        } catch (Exception $e) {
-            $this->logFailedAttempt($username, 'rate_limit_exceeded', $user['id']);
-            throw new Exception($e->getMessage());
+        // 验证密码
+        if (!CryptoHelper::verifyPassword($password, $user['password'])) {
+            $this->logFailedAttempt($username, 'wrong_password', $user['id']);
+            throw new Exception("用户名或密码错误");
         }
 
-        // 2FA验证
-        if ($is2faEnabled) {
+        // 检查2FA
+        if (!empty($user['tfa_secret'])) {
             if (empty($totpCode)) {
                 return [
                     'requires_2fa' => true,
@@ -107,27 +92,14 @@ class LoginController {
             }
 
             $secret = CryptoHelper::decrypt($user['tfa_secret']);
-            if (!$this->verifyTotp($secret, $totpCode)) {
-                // 检查是否是恢复代码
-                if (!$this->useRecoveryCode($user['id'], $totpCode)) {
-                    $this->logFailedAttempt($username, 'invalid_2fa', $user['id']);
-            throw new Exception("验证码无效");
-                }
+            if (!$this->verifyTotp($secret, $totpCode) && !$this->useRecoveryCode($user['id'], $totpCode)) {
+                $this->logFailedAttempt($username, 'invalid_2fa', $user['id']);
+                throw new Exception("验证码无效");
             }
         }
-        
-        // 验证密码
-        if (!CryptoHelper::verifyPassword($password, $user['password'])) {
-            $this->logFailedAttempt($username, 'wrong_password', $user['id']);
-            throw new Exception("用户名或密码错误");
-        }
 
-        // 如果是2FA登录，清除临时会话
-        if ($is2faEnabled && isset($_SESSION['2fa_user_id'])) {
-            unset($_SESSION['2fa_user_id']);
-        }
-        
-        // 创建会话
+        // 创建安全会话
+        AuthMiddleware::secureSession();
         $this->createUserSession($user, $remember);
         
         // 记录成功登录

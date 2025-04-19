@@ -1,0 +1,12 @@
+{
+  "name": "deepseek-companion",
+  "version": "1.0.0",
+  "description": "Document viewer application",
+  "scripts": {
+    "start": "node server.js",
+    "build": "webpack --config webpack.config.js"
+  },
+  "dependencies": {
+    // 根据实际需要添加依赖
+  }
+}

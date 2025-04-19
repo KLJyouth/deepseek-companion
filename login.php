@@ -125,34 +125,42 @@ Libs\RedirectHelper::redirect('admin.php');
     
     // 处理登录请求
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // 获取输入并净化
-        // 严格验证输入
-        $username = isset($_POST['username']) ? Libs\SanitizeHelper::sanitize($_POST['username'], 'string') : '';
-        $password = isset($_POST['password']) ? $_POST['password'] : '';
-        if (empty($username) || empty($password)) {
-            throw new Exception("用户名和密码不能为空");
-        }
-        $remember = isset($_POST['remember']);
-    if (isset($_POST['csrf_token'])) {
-        $csrfToken = $_POST['csrf_token'];
-    } else {
-        $csrfToken = '';
-    }
-        
         try {
-            // 调用控制器登录方法
-            $result = $loginController->login($username, $password, $remember);
+            // 验证CSRF令牌
+            if (empty($_POST['csrf_token']) || !CryptoHelper::validateCsrfToken($_POST['csrf_token'])) {
+                throw new Exception("安全验证失败，请刷新页面重试");
+            }
             
-            // 登录成功，跳转
-    // 安全处理返回URL
-    $returnUrl = 'admin.php';
-    if (isset($_GET['return_url'])) {
-        $parsed = parse_url($_GET['return_url']);
-        if ($parsed && !isset($parsed['host']) && strpos($parsed['path'], '..') === false) {
-            $returnUrl = ltrim($parsed['path'], '/');
-        }
-    }
-    Libs\RedirectHelper::redirect($returnUrl);
+            // 验证输入
+            $username = isset($_POST['username']) ? Libs\SanitizeHelper::sanitize($_POST['username'], 'string') : '';
+            $password = isset($_POST['password']) ? $_POST['password'] : '';
+            $remember = isset($_POST['remember']);
+            $totpCode = isset($_POST['totp_code']) ? $_POST['totp_code'] : null;
+            
+            if (empty($username) || empty($password)) {
+                throw new Exception("用户名和密码不能为空");
+            }
+
+            // 调用登录控制器
+            $result = $loginController->login($username, $password, $remember, $totpCode);
+            
+            // 处理2FA要求
+            if (isset($result['requires_2fa']) && $result['requires_2fa']) {
+                $_SESSION['2fa_pending'] = true;
+                $_SESSION['2fa_user_id'] = $result['user_id'];
+                Libs\RedirectHelper::redirect('2fa.php');
+                exit;
+            }
+
+            // 登录成功，重定向
+            $returnUrl = isset($_GET['return_url']) && !empty($_GET['return_url']) ? 
+                filter_var($_GET['return_url'], FILTER_SANITIZE_URL) : 'admin.php';
+                
+            if (parse_url($returnUrl, PHP_URL_HOST)) {
+                $returnUrl = 'admin.php'; // 如果包含主机名则重置为默认页
+            }
+            
+            Libs\RedirectHelper::redirect($returnUrl);
             
         } catch (Exception $e) {
             $error = $e->getMessage();

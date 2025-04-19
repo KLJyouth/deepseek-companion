@@ -28,6 +28,15 @@ ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', $env === 'production');
 ini_set('session.use_strict_mode', 1);
 
+// 会话安全配置
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_secure', $env === 'production' ? 1 : 0);
+ini_set('session.use_strict_mode', 1);
+ini_set('session.cookie_samesite', 'Strict');
+ini_set('session.gc_maxlifetime', 3600); // 1小时
+ini_set('session.use_only_cookies', 1);
+ini_set('session.use_trans_sid', 0);
+
 // ==================== 数据库配置 ====================
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_USER', getenv('DB_USER') ?: 'deepseek_gxggm_c');
@@ -36,6 +45,10 @@ define('DB_NAME', getenv('DB_NAME') ?: 'ai_companion');
 define('DB_CHARSET', 'utf8mb4');
 define('DB_SSL', filter_var(getenv('DB_SSL'), FILTER_VALIDATE_BOOLEAN));
 define('DB_TABLE_PREFIX', getenv('DB_TABLE_PREFIX') ?: 'ac_');
+
+// 数据库连接超时
+define('DB_CONNECT_TIMEOUT', 5);
+define('DB_READ_TIMEOUT', 30);
 
 // ==================== 应用配置 ====================
 // 安全设置
@@ -357,3 +370,8 @@ header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' cdn.jsdelivr.net; style-src \'self\' \'unsafe-inline\' cdn.jsdelivr.net; img-src \'self\' data:; font-src \'self\' cdn.jsdelivr.net');
 header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
+
+// CSRF保护
+define('CSRF_TOKEN_NAME', 'csrf_token');
+define('CSRF_TOKEN_LENGTH', 32);
+define('CSRF_TOKEN_EXPIRE', 3600);
