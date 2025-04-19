@@ -52,6 +52,9 @@ define('LOG_PATH', ROOT_PATH.'/logs');
 define('SESSION_PATH', ROOT_PATH.'/sessions');
 define('CACHE_PATH', ROOT_PATH.'/cache');
 
+// ========== 必须先加载加密库 ==========
+require_once ROOT_PATH . '/libs/CryptoHelper.php';
+
 // ==================== 安全配置 ====================
 // 加密配置
 // Supported values: 'AES-256-CBC', 'quantum'
@@ -125,6 +128,7 @@ define('CONTRACT_AUDIT_LOG', LOG_PATH.'/contract_audit.log');
 
 // API配置
 if (!env('DEEPSEEK_API_KEY')) {
+    // 请在.env文件中添加：DEEPSEEK_API_KEY=你的密钥
     throw new \RuntimeException('DeepSeek API密钥未设置，请通过环境变量配置');
 }
 define('DEEPSEEK_API_KEY', CryptoHelper::encrypt(env('DEEPSEEK_API_KEY')));
@@ -153,7 +157,6 @@ function require_lib($path) {
     require_once ROOT_PATH . '/' . ltrim($path, '/');
 }
 
-require_lib('libs/CryptoHelper.php');
 require_lib('libs/DatabaseHelper.php');
 require_lib('middlewares/AuthMiddleware.php');
 // 移除中间常量定义
