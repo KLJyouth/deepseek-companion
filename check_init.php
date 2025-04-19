@@ -3,6 +3,8 @@
  * 系统初始化状态检查工具
  */
 
+use Libs\CryptoHelper;
+
 require_once 'config.php';
 
 // 发送邮件通知

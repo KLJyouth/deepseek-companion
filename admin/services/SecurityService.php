@@ -80,6 +80,71 @@ class SecurityService
         return json_decode(curl_exec($ch), true);
     }
 
+    /**
+     * 模式匹配分析
+     */
+    private function patternMatch($payload): array {
+        // 常见攻击模式检测
+        $patterns = [
+            '/<script\b[^>]*>([\s\S]*?)<\/script>/i' => 'XSS',
+            '/union\s+all\s+select/i' => 'SQL注入',
+            '/etc\/passwd/i' => '路径遍历',
+            '/<\?php\b[^>]*>([\s\S]*?)\?>/i' => 'PHP注入'
+        ];
+
+        $matches = [];
+        foreach ($patterns as $pattern => $type) {
+            if (preg_match($pattern, $payload)) {
+                $matches[$type] = $pattern;
+            }
+        }
+
+        return [
+            'score' => count($matches) * 30,
+            'matches' => $matches
+        ];
+    }
+
+    /**
+     * 行为分析
+     */
+    private function analyzeBehavior($payload): array {
+        // 异常行为特征检测
+        $length = strlen($payload);
+        $entropy = $this->calculateEntropy($payload);
+        $suspiciousFunctions = preg_match_all('/(eval|system|exec|shell_exec|passthru)/i', $payload);
+
+        $risk = 'low';
+        if ($length > 10000 || $entropy > 6.5 || $suspiciousFunctions > 0) {
+            $risk = 'high';
+        } elseif ($length > 5000 || $entropy > 5.5) {
+            $risk = 'medium';
+        }
+
+        return [
+            'risk' => $risk,
+            'length' => $length,
+            'entropy' => $entropy,
+            'suspicious_functions' => $suspiciousFunctions
+        ];
+    }
+
+    /**
+     * 计算字符串熵值
+     */
+    private function calculateEntropy($string): float {
+        $entropy = 0;
+        $len = strlen($string);
+        $chars = count_chars($string, 1);
+
+        foreach ($chars as $char => $count) {
+            $p = $count / $len;
+            $entropy -= $p * log($p, 2);
+        }
+
+        return $entropy;
+    }
+
     public function fetchThreatIntelligence() {
         // 获取全球威胁情报
         $feed = file_get_contents(self::THREAT_API."?key=".getenv('THREAT_API_KEY'));
