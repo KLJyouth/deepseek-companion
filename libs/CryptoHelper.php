@@ -260,8 +260,8 @@ final class CryptoHelper {
         
         $tag = '';
         $ciphertext = openssl_encrypt(
-        
-        $ciphertext = base64_decode($encrypted['ciphertext']);
+            $payload,
+            'aes-256-gcm',
             self::$encryptionKey,
             OPENSSL_RAW_DATA,
             self::$iv,
@@ -751,5 +751,3 @@ final class CryptoHelper {
         return $result;
     }
 }
-```
-</copilot-edited-file>  
