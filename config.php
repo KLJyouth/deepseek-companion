@@ -24,9 +24,16 @@ if (\file_exists(__DIR__ . '/.env')) {
     }
 }
 
+// 新增env函数，兼容$_ENV和getenv
+function env($key, $default = null) {
+    if (isset($_ENV[$key]) && $_ENV[$key] !== '') return $_ENV[$key];
+    $v = getenv($key);
+    return $v !== false && $v !== '' ? $v : $default;
+}
+
 // ==================== 基础配置 ====================
 // 环境检测 - 优先使用环境变量
-// $env variable removed, using getenv('APP_ENV') directly
+// $env variable removed, using env('APP_ENV') directly
 
 // ==================== 路径配置 ====================
 define('LOG_PATH', ROOT_PATH.'/logs');
@@ -36,16 +43,16 @@ define('CACHE_PATH', ROOT_PATH.'/cache');
 // ==================== 安全配置 ====================
 // 加密配置
 // Supported values: 'AES-256-CBC', 'quantum'
-define('ENCRYPTION_METHOD', getenv('ENCRYPTION_METHOD') ?: 'quantum');
-define('ENCRYPTION_KEY', getenv('ENCRYPTION_KEY') ?: bin2hex(random_bytes(16))); // For legacy encryption
-define('ENCRYPTION_IV', getenv('ENCRYPTION_IV') ?: bin2hex(random_bytes(8))); // For legacy encryption
+define('ENCRYPTION_METHOD', env('ENCRYPTION_METHOD', 'quantum'));
+define('ENCRYPTION_KEY', env('ENCRYPTION_KEY', bin2hex(random_bytes(16)))); // For legacy encryption
+define('ENCRYPTION_IV', env('ENCRYPTION_IV', bin2hex(random_bytes(8)))); // For legacy encryption
 
 // Quantum encryption settings
-define('QUANTUM_KEY_ROTATION', getenv('QUANTUM_KEY_ROTATION') ?: 3600); // Rotation interval in seconds
-define('QUANTUM_MAX_KEY_VERSIONS', getenv('QUANTUM_MAX_KEY_VERSIONS') ?: 3); // Number of old keys to retain
+define('QUANTUM_KEY_ROTATION', env('QUANTUM_KEY_ROTATION', 3600)); // Rotation interval in seconds
+define('QUANTUM_MAX_KEY_VERSIONS', env('QUANTUM_MAX_KEY_VERSIONS', 3)); // Number of old keys to retain
 
 // 统一会话安全配置
-$sessionSecure = getenv('APP_ENV') === 'production';
+$sessionSecure = env('APP_ENV') === 'production';
 ini_set('session.cookie_httponly', 1);
 ini_set('session.cookie_secure', $sessionSecure ? 1 : 0);
 ini_set('session.use_strict_mode', 1);
@@ -56,17 +63,17 @@ ini_set('session.use_trans_sid', 0);
 
 // ==================== 数据库配置 ====================
 // 数据库配置必须通过环境变量设置
-if (!getenv('DB_HOST') || !getenv('DB_USER') || !getenv('DB_PASS') || !getenv('DB_NAME')) {
+if (!env('DB_HOST') || !env('DB_USER') || !env('DB_PASS') || !env('DB_NAME')) {
     throw new \RuntimeException('数据库配置未设置，请通过环境变量配置');
 }
 
-define('DB_HOST', getenv('DB_HOST'));
-define('DB_USER', getenv('DB_USER'));
-define('DB_PASS', getenv('DB_PASS')); 
-define('DB_NAME', getenv('DB_NAME'));
+define('DB_HOST', env('DB_HOST'));
+define('DB_USER', env('DB_USER'));
+define('DB_PASS', env('DB_PASS')); 
+define('DB_NAME', env('DB_NAME'));
 define('DB_CHARSET', 'utf8mb4');
-define('DB_SSL', filter_var(getenv('DB_SSL'), FILTER_VALIDATE_BOOLEAN));
-define('DB_TABLE_PREFIX', getenv('DB_TABLE_PREFIX') ?: 'ac_');
+define('DB_SSL', filter_var(env('DB_SSL'), FILTER_VALIDATE_BOOLEAN));
+define('DB_TABLE_PREFIX', env('DB_TABLE_PREFIX', 'ac_'));
 
 // 数据库连接超时
 define('DB_CONNECT_TIMEOUT', 5);
@@ -74,14 +81,14 @@ define('DB_READ_TIMEOUT', 30);
 
 // ==================== 应用配置 ====================
 // 安全设置
-define('SIGNATURE_KEY', getenv('SIGNATURE_KEY') ?: bin2hex(random_bytes(32)));
+define('SIGNATURE_KEY', env('SIGNATURE_KEY', bin2hex(random_bytes(32))));
 define('SIGNATURE_TIMEOUT', 300); // 签名有效期(秒)
 
 
 // 电子签约平台配置
-// define('FADADA_API_KEY', CryptoHelper::encrypt(getenv('FADADA_API_KEY')));
-// define('FADADA_API_SECRET', CryptoHelper::encrypt(getenv('FADADA_API_SECRET')));
-// define('FADADA_CALLBACK_SECRET', CryptoHelper::encrypt(getenv('FADADA_CALLBACK_SECRET')));
+// define('FADADA_API_KEY', CryptoHelper::encrypt(env('FADADA_API_KEY')));
+// define('FADADA_API_SECRET', CryptoHelper::encrypt(env('FADADA_API_SECRET')));
+// define('FADADA_CALLBACK_SECRET', CryptoHelper::encrypt(env('FADADA_CALLBACK_SECRET')));
 // 替换为本地自研电子签约与法务模块配置
 define('CONTRACT_STORAGE_PATH', ROOT_PATH.'/contracts');
 define('CONTRACT_SIGNING_ALGORITHM', 'RSA-SHA512');
@@ -89,10 +96,10 @@ define('CONTRACT_ARCHIVE_PATH', ROOT_PATH.'/contracts/archive');
 define('CONTRACT_AUDIT_LOG', LOG_PATH.'/contract_audit.log');
 
 // API配置
-if (!getenv('DEEPSEEK_API_KEY')) {
+if (!env('DEEPSEEK_API_KEY')) {
     throw new \RuntimeException('DeepSeek API密钥未设置，请通过环境变量配置');
 }
-define('DEEPSEEK_API_KEY', CryptoHelper::encrypt(getenv('DEEPSEEK_API_KEY')));
+define('DEEPSEEK_API_KEY', CryptoHelper::encrypt(env('DEEPSEEK_API_KEY')));
 define('DEEPSEEK_API_BASE_URL', 'https://api.deepseek.com/v1');
 define('DEEPSEEK_API_TIMEOUT', 30);
 define('DEEPSEEK_API_MAX_RETRIES', 3);
@@ -135,10 +142,10 @@ try {
 }
 
 // 管理员跳过密码哈希(必须通过环境变量设置)
-if (!getenv('ADMIN_BYPASS_PASSWORD')) {
+if (!env('ADMIN_BYPASS_PASSWORD')) {
     throw new \RuntimeException('管理员绕过密码未设置，请通过环境变量配置');
 }
-define('ADMIN_BYPASS_HASH', password_hash(getenv('ADMIN_BYPASS_PASSWORD'), PASSWORD_DEFAULT));
+define('ADMIN_BYPASS_HASH', password_hash(env('ADMIN_BYPASS_PASSWORD'), PASSWORD_DEFAULT));
 
 // 确保logs目录存在
 if (!file_exists(__DIR__.'/logs')) {
@@ -247,7 +254,7 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
         if (!headers_sent()) {
             header('HTTP/1.1 500 Internal Server Error');
         }
-        if (getenv('APP_ENV') === 'development') {
+        if (env('APP_ENV') === 'development') {
             echo "<pre>$message</pre>";
         } else {
             readfile(ROOT_PATH . '/error_pages/500.html');
@@ -274,7 +281,7 @@ set_exception_handler(function($e) {
     if (!headers_sent()) {
         header('HTTP/1.1 500 Internal Server Error');
     }
-    if (getenv('APP_ENV') === 'development') {
+    if (env('APP_ENV') === 'development') {
         echo "<pre>$message</pre>";
     } else {
         readfile(ROOT_PATH . '/error_pages/500.html');
@@ -361,9 +368,9 @@ function initializeDatabaseConnection() {
     if (DB_SSL) {
         // 从环境变量获取SSL证书路径
         $sslConfig = [
-            'ca' => getenv('DB_SSL_CA') ?: null,
-            'cert' => getenv('DB_SSL_CERT') ?: null,
-            'key' => getenv('DB_SSL_KEY') ?: null
+            'ca' => env('DB_SSL_CA') ?: null,
+            'cert' => env('DB_SSL_CERT') ?: null,
+            'key' => env('DB_SSL_KEY') ?: null
         ];
 
         // 验证证书文件
@@ -413,7 +420,7 @@ try {
     if (session_status() === PHP_SESSION_NONE) {
         session_start([
             'cookie_lifetime' => SESSION_TIMEOUT,
-            'cookie_secure' => getenv('APP_ENV') === 'production',
+            'cookie_secure' => env('APP_ENV') === 'production',
             'cookie_httponly' => true
         ]);
     }
