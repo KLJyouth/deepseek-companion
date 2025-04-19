@@ -148,14 +148,55 @@ CREATE TABLE IF NOT EXISTS `metric_daily` (
   UNIQUE KEY `idx_metric_time` (`metric`, `timestamp`),
   KEY `idx_timestamp` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 合同模板表
+CREATE TABLE IF NOT EXISTS `contract_templates` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `metric` varchar(20) NOT NULL COMMENT '指标类型',
-  `value` float NOT NULL COMMENT '指标值',
-  `timestamp` int NOT NULL COMMENT '时间戳',
+  `name` varchar(100) NOT NULL,
+  `content` longtext NOT NULL,
+  `created_by` int NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_metric` (`metric`),
-  KEY `idx_timestamp` (`timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统监控指标表';
+  KEY `idx_created_by` (`created_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 合同实例表
+CREATE TABLE IF NOT EXISTS `contracts` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `template_id` int NOT NULL,
+  `parties` json NOT NULL,
+  `status` enum('draft','pending','signed','archived','expired') DEFAULT 'draft',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `signed_at` datetime,
+  `archived_at` datetime,
+  PRIMARY KEY (`id`),
+  KEY `idx_template` (`template_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 合同签名表
+CREATE TABLE IF NOT EXISTS `contract_signatures` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `contract_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `signature` text NOT NULL,
+  `algorithm` varchar(50) NOT NULL,
+  `signed_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_contract` (`contract_id`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 合同审计日志表
+CREATE TABLE IF NOT EXISTS `contract_audit_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `contract_id` int NOT NULL,
+  `action` varchar(50) NOT NULL,
+  `user_id` int,
+  `description` text,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_contract` (`contract_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 服务操作日志表
 CREATE TABLE `service_operation_logs` (

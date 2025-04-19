@@ -63,9 +63,14 @@ define('SIGNATURE_TIMEOUT', 300); // 签名有效期(秒)
 
 
 // 电子签约平台配置
-define('FADADA_API_KEY', CryptoHelper::encrypt(getenv('FADADA_API_KEY')));
-define('FADADA_API_SECRET', CryptoHelper::encrypt(getenv('FADADA_API_SECRET')));
-define('FADADA_CALLBACK_SECRET', CryptoHelper::encrypt(getenv('FADADA_CALLBACK_SECRET')));
+// define('FADADA_API_KEY', CryptoHelper::encrypt(getenv('FADADA_API_KEY')));
+// define('FADADA_API_SECRET', CryptoHelper::encrypt(getenv('FADADA_API_SECRET')));
+// define('FADADA_CALLBACK_SECRET', CryptoHelper::encrypt(getenv('FADADA_CALLBACK_SECRET')));
+// 替换为本地自研电子签约与法务模块配置
+define('CONTRACT_STORAGE_PATH', ROOT_PATH.'/contracts');
+define('CONTRACT_SIGNING_ALGORITHM', 'RSA-SHA512');
+define('CONTRACT_ARCHIVE_PATH', ROOT_PATH.'/contracts/archive');
+define('CONTRACT_AUDIT_LOG', LOG_PATH.'/contract_audit.log');
 
 // API配置
 if (!getenv('DEEPSEEK_API_KEY')) {
