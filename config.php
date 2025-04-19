@@ -17,18 +17,30 @@ if (\file_exists(__DIR__ . '/.env')) {
         [$k, $v] = \explode('=', $line, 2);
         $k = \trim($k);
         $v = \trim($v);
-        if (!\getenv($k)) {
-            // 彻底移除 putenv，仅设置 $_ENV
-            $_ENV[$k] = $v;
+        // 设置到 $_ENV、$_SERVER，并尝试 putenv
+        $_ENV[$k] = $v;
+        $_SERVER[$k] = $v;
+        if (function_exists('putenv')) {
+            @putenv("$k=$v");
         }
     }
 }
 
-// 新增env函数，兼容$_ENV和getenv
+// 新增env函数，优先顺序：getenv > $_ENV > $_SERVER > 常量 > 默认值
 function env($key, $default = null) {
-    if (isset($_ENV[$key]) && $_ENV[$key] !== '') return $_ENV[$key];
     $v = getenv($key);
-    return $v !== false && $v !== '' ? $v : $default;
+    if ($v !== false && $v !== '') return $v;
+    if (isset($_ENV[$key]) && $_ENV[$key] !== '') return $_ENV[$key];
+    if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') return $_SERVER[$key];
+    if (defined($key)) return constant($key);
+    return $default;
+}
+
+// 工具函数：将环境变量同步为常量（如未定义）
+function define_env_constant($key, $default = null) {
+    if (!defined($key)) {
+        define($key, env($key, $default));
+    }
 }
 
 // ==================== 基础配置 ====================
@@ -62,15 +74,31 @@ ini_set('session.use_only_cookies', 1);
 ini_set('session.use_trans_sid', 0);
 
 // ==================== 数据库配置 ====================
+// 兼容 .env 中 DB_DATABASE 和 DB_NAME
+$dbName = env('DB_NAME');
+if (!$dbName) {
+    $dbName = env('DB_DATABASE');
+}
+// 兼容 .env 中 DB_USER 和 DB_USERNAME
+$dbUser = env('DB_USER');
+if (!$dbUser) {
+    $dbUser = env('DB_USERNAME');
+}
+// 兼容 .env 中 DB_PASS 和 DB_PASSWORD
+$dbPass = env('DB_PASS');
+if (!$dbPass) {
+    $dbPass = env('DB_PASSWORD');
+}
+
 // 数据库配置必须通过环境变量设置
-if (!env('DB_HOST') || !env('DB_USER') || !env('DB_PASS') || !env('DB_NAME')) {
+if (!env('DB_HOST') || !$dbUser || !$dbPass || !$dbName) {
     throw new \RuntimeException('数据库配置未设置，请通过环境变量配置');
 }
 
 define('DB_HOST', env('DB_HOST'));
-define('DB_USER', env('DB_USER'));
-define('DB_PASS', env('DB_PASS')); 
-define('DB_NAME', env('DB_NAME'));
+define('DB_USER', $dbUser);
+define('DB_PASS', $dbPass);
+define('DB_NAME', $dbName);
 define('DB_CHARSET', 'utf8mb4');
 define('DB_SSL', filter_var(env('DB_SSL'), FILTER_VALIDATE_BOOLEAN));
 define('DB_TABLE_PREFIX', env('DB_TABLE_PREFIX', 'ac_'));
