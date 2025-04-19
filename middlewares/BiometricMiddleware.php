@@ -1,8 +1,9 @@
 <?php
 namespace Middlewares;
-
-use Libs\SecurityManager;
+require_once __DIR__ . '/libs/CryptoHelper.php';
 use Libs\CryptoHelper;
+use Libs\SecurityManager;
+
 use Libs\DatabaseHelper;
 use Exception;
 

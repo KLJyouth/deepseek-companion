@@ -25,7 +25,8 @@ class SecurityMiddleware {
         $token = $_SERVER['HTTP_'.$this->csrfHeaderName] ?? 
                 ($request[$this->csrfTokenName] ?? null);
                 
-        if (!$token || !hash_equals(SessionHelper::get($this->csrfTokenName), $token)) {
+        $session = SessionHelper::getInstance();
+        if (!$token || !hash_equals($session->get($this->csrfTokenName), $token)) {
             throw new Exception('无效的CSRF令牌', 403);
         }
     }

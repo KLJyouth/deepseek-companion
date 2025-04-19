@@ -1,4 +1,4 @@
-huan<?php
+<?php
 declare(strict_types=1);
 
 namespace Libs;
@@ -115,7 +115,7 @@ final class CryptoHelper {
                 'algorithm' => 'AES-256-CBC',
                 'openssl_version' => OPENSSL_VERSION_TEXT
             ];
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log('[CRYPTO HEALTH CHECK] 加密健康检查失败: ' . $e->getMessage());
             return [
                 'status' => 'failed',
@@ -124,6 +124,29 @@ final class CryptoHelper {
                 'openssl_version' => defined('OPENSSL_VERSION_TEXT') ? OPENSSL_VERSION_TEXT : 'unknown'
             ];
         }
+    }
+
+    /**
+     * 生成消息签名
+     * @param array $data 包含timestamp、nonce和message的数组
+     * @return string 签名
+     * @throws \InvalidArgumentException 当数据不完整时抛出
+     * @throws \RuntimeException 当签名密钥未配置时抛出
+     */
+    public static function generateSignature(array $data): string {
+        if (empty($data['timestamp']) || empty($data['nonce']) || empty($data['message'])) {
+            throw new \InvalidArgumentException('签名数据不完整');
+        }
+        
+        $signingKey = ConfigHelper::get('websocket.signing_key');
+        if (empty($signingKey)) {
+            throw new \RuntimeException('签名密钥未配置');
+        }
+        
+        return hash_hmac('sha256', 
+            $data['timestamp'].$data['nonce'].$data['message'], 
+            $signingKey
+        );
     }
     
     /**
@@ -728,3 +751,5 @@ final class CryptoHelper {
         return $result;
     }
 }
+```
+</copilot-edited-file>  

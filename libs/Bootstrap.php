@@ -6,7 +6,6 @@ namespace Libs;
 require_once __DIR__ . '/CryptoHelper.php';
 require_once __DIR__ . '/DatabaseHelper.php';
 
-#[AllowDynamicProperties]
 final class Bootstrap {
     const MODE_PRIMARY = 'primary';
     const MODE_FALLBACK = 'fallback';
@@ -95,40 +94,46 @@ final class Bootstrap {
 
     private static function stageDbConnection($mode) {
         try {
-            $dsn = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=".DB_CHARSET;
+            // 创建mysqli连接
+            $conn = new \mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
             
-            $options = [
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-                \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-                \PDO::ATTR_EMULATE_PREPARES => false
-            ];
-
-            // 创建数据库连接和助手实例
-            $db = new \PDO($dsn, DB_USER, DB_PASS, $options);
-            new DatabaseHelper($db);
+            if ($conn->connect_error) {
+                throw new \Exception("MySQL连接失败: " . $conn->connect_error);
+            }
+            
+            // 设置字符集
+            if (!$conn->set_charset(DB_CHARSET)) {
+                throw new \Exception("设置字符集失败: " . $conn->error);
+            }
+            
+            // 创建数据库助手实例
+            new DatabaseHelper($conn);
             
             // 验证数据库版本和兼容性
-            $version = $db->getAttribute(\PDO::ATTR_SERVER_VERSION);
+            $version = $conn->server_version;
+            $versionStr = $conn->get_server_info();
             $minVersion = '5.7.8';
-            if (version_compare($version, $minVersion, '<')) {
-                throw new \Exception("不兼容的MySQL版本（需要{$minVersion}+，当前版本：{$version}）");
+            if (version_compare($versionStr, $minVersion, '<')) {
+                throw new \Exception("不兼容的MySQL版本（需要{$minVersion}+，当前版本：{$versionStr}）");
             }
             
             // MySQL 8+ 特定优化
-            if (version_compare($version, '8.0.0', '>=')) {
-                $db->exec("SET SESSION sql_mode='STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
-            } else {
-                $db->exec("SET SESSION sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+            $sqlMode = version_compare($versionStr, '8.0.0', '>=') 
+                ? "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION"
+                : "STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION";
+            
+            if (!$conn->query("SET SESSION sql_mode='{$sqlMode}'")) {
+                error_log("[DB CONNECTION] 设置SQL模式失败: " . $conn->error);
             }
             
-            error_log("[DB CONNECTION] 已连接MySQL服务器，版本：{$version} (OpenSSL: ".OPENSSL_VERSION_TEXT.")");
+            error_log("[DB CONNECTION] 已连接MySQL服务器，版本：{$versionStr} (OpenSSL: ".OPENSSL_VERSION_TEXT.")");
             
             error_log('[DB CONNECTION] 数据库连接成功');
             return true;
             
-        } catch (\PDOException $e) {
+        } catch (\Exception $e) {
             error_log('[DB CONNECTION] 连接失败: ' . $e->getMessage());
-            throw new \Exception("数据库连接失败: ".$e->getMessage());
+            throw $e;
         }
     }
 
@@ -245,15 +250,12 @@ final class Bootstrap {
             throw new \Exception("数据库主机配置无效 ({$dbHost}): " . $errorDetails);
         }
         
-        // 连接测试
-        try {
-            new \PDO("mysql:host={$dbHost}", DB_USER, DB_PASS, [
-                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-                \PDO::ATTR_TIMEOUT => 5
-            ]);
-        } catch (\PDOException $e) {
-            error_log('[CONFIG VALIDATION] 数据库连接测试失败: ' . $e->getMessage());
-            throw new \Exception("数据库连接测试失败: " . $e->getMessage());
+        // 使用mysqli进行连接测试
+        $testConn = @new \mysqli($dbHost, DB_USER, DB_PASS);
+        if ($testConn->connect_error) {
+            $errorMsg = '[CONFIG VALIDATION] 数据库连接测试失败: ' . $testConn->connect_error;
+            error_log($errorMsg);
+            throw new \Exception("数据库连接测试失败: " . $testConn->connect_error);
         }
         
         error_log('[CONFIG VALIDATION] 配置验证通过');

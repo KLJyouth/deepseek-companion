@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="csrf-token" content="<?php echo SessionHelper::get('csrf_token'); ?>">
+    <?php $session = SessionHelper::getInstance(); ?>
+    <meta name="csrf-token" content="<?php echo $session->get('csrf_token'); ?>">
     <title>智能防御仪表盘</title>
     <script src="/js/three.min.js"></script>
     <style>

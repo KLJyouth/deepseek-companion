@@ -3,259 +3,141 @@ namespace Services;
 
 use Libs\SessionHelper;
 use Libs\CryptoHelper;
-use Ratchet\MessageComponentInterface;
-use Ratchet\ConnectionInterface;
 
-class WebSocketService implements MessageComponentInterface {
-    protected $clients;
+class WebSocketService {
+    private $socket;
+    private $clients = [];
     private $csrfTokenName = 'csrf_token';
     
-    private $enableCompression;
-    private $compressionThreshold;
-    private $signingKey;
-    private $keyRotationInterval = 3600; // 1小时轮换一次
-    
-    public function __construct() {
-        $this->clients = new \SplObjectStorage;
-        $this->enableCompression = ConfigHelper::get('websocket.compression', true);
-        $this->compressionThreshold = ConfigHelper::get('websocket.compression_threshold', 1024);
-        $this->signingKey = $this->getCurrentSigningKey();
-        
-        // 定时轮换密钥
-        $this->scheduleKeyRotation();
+    public function __construct($host = '0.0.0.0', $port = 8080) {
+        $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, 1);
+        socket_bind($this->socket, $host, $port);
+        socket_listen($this->socket);
     }
-    
-    private function getCurrentSigningKey(): string {
-        $key = ConfigHelper::get('websocket.signing_key');
-        if (empty($key)) {
-            throw new \RuntimeException('WebSocket签名密钥未配置');
-        }
-        return $key;
-    }
-    
-    private function scheduleKeyRotation() {
-        if (function_exists('pcntl_alarm')) {
-            pcntl_alarm($this->keyRotationInterval);
-            pcntl_signal(SIGALRM, function() {
-                $this->signingKey = $this->generateNewKey();
-                $this->scheduleKeyRotation();
-            });
+
+    public function run() {
+        while (true) {
+            $newSocket = socket_accept($this->socket);
+            $header = socket_read($newSocket, 1024);
+            
+            if ($this->performHandshake($header, $newSocket)) {
+                $this->clients[] = $newSocket;
+                $this->handleClient($newSocket);
+            }
         }
     }
-    
-    private function generateNewKey(): string {
-        $newKey = bin2hex(random_bytes(32));
-        ConfigHelper::set('websocket.signing_key', $newKey);
-        return $newKey;
+
+    private function performHandshake($header, $socket) {
+        // 验证CSRF令牌
+        $session = SessionHelper::getInstance();
+        if (!preg_match('/csrf_token=([^\s]+)/', $header, $matches) || 
+            !hash_equals($session->get($this->csrfTokenName), urldecode($matches[1]))) {
+            socket_close($socket);
+            return false;
+        }
+
+        // WebSocket握手协议
+        if (preg_match("/Sec-WebSocket-Key: (.*)\r\n/", $header, $match)) {
+            $key = base64_encode(pack(
+                'H*',
+                sha1($match[1] . '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
+            ));
+            $upgrade = "HTTP/1.1 101 Switching Protocols\r\n" .
+                       "Upgrade: websocket\r\n" .
+                       "Connection: Upgrade\r\n" .
+                       "Sec-WebSocket-Accept: $key\r\n\r\n";
+            socket_write($socket, $upgrade, strlen($upgrade));
+            return true;
+        }
+        return false;
     }
-    
-    private function signMessage(string $message): array {
-        $timestamp = time();
-        $nonce = bin2hex(random_bytes(8));
-        $signature = hash_hmac('sha256', $timestamp.$nonce.$message, $this->signingKey);
+
+    private function handleClient($socket) {
+        while (true) {
+            $data = $this->readFrame($socket);
+            if ($data === false) break;
+            
+            $decoded = json_decode($data, true);
+            if ($decoded && $this->verifyMessage($decoded)) {
+                $this->broadcast($data);
+            }
+        }
+        socket_close($socket);
+    }
+
+    private function readFrame($socket) {
+        $data = socket_read($socket, 1024, PHP_BINARY_READ);
+        if ($data === false) return false;
         
-        return [
-            'message' => $message,
-            'timestamp' => $timestamp,
-            'nonce' => $nonce,
-            'signature' => $signature
-        ];
+        $length = ord($data[1]) & 127;
+        if ($length <= 125) {
+            $mask = substr($data, 2, 4);
+            $payload = substr($data, 6);
+        } elseif ($length == 126) {
+            $mask = substr($data, 4, 4);
+            $payload = substr($data, 8);
+        } else {
+            $mask = substr($data, 10, 4);
+            $payload = substr($data, 14);
+        }
+        
+        $unmasked = '';
+        for ($i = 0; $i < strlen($payload); $i++) {
+            $unmasked .= $payload[$i] ^ $mask[$i % 4];
+        }
+        return $unmasked;
     }
-    
-    private function verifySignature(array $data): bool {
-        if (empty($data['timestamp']) || empty($data['nonce']) || empty($data['signature'])) {
+
+    private function verifyMessage($data) {
+        // 验证消息签名和时效性
+        if (empty($data['timestamp']) || empty($data['signature'])) {
             return false;
         }
         
-        // 验证时间戳有效性(5分钟内)
+        // 5分钟内有效
         if (abs(time() - $data['timestamp']) > 300) {
             return false;
         }
         
-        $expected = hash_hmac('sha256', 
-            $data['timestamp'].$data['nonce'].$data['message'], 
-            $this->signingKey
-        );
-        
+        $expected = CryptoHelper::generateSignature($data);
         return hash_equals($expected, $data['signature']);
     }
-    
-    private function verifyAuthToken(string $token): bool {
-        try {
-            $db = new DatabaseHelper();
-            $result = $db->getRow(
-                "SELECT user_id FROM ws_auth_tokens WHERE token = ? AND expires_at > NOW()",
-                [['value' => $token, 'type' => 's']]
-            );
-            
-            return !empty($result);
-        } catch (Exception $e) {
-            error_log('令牌验证失败: ' . $e->getMessage());
-            return false;
-        }
-    }
-    
-    private function compressMessage(string $message): string {
-        if (!$this->enableCompression || strlen($message) < $this->compressionThreshold) {
-            return $message;
-        }
-        
-        try {
-            $compressed = gzcompress($message, 6);
-            return base64_encode($compressed);
-        } catch (\Exception $e) {
-            error_log('消息压缩失败: ' . $e->getMessage());
-            return $message;
-        }
-    }
-    
-    private function decompressMessage(string $message): string {
-        if (strlen($message) < $this->compressionThreshold || !base64_decode($message, true)) {
-            return $message;
-        }
-        
-        try {
-            $compressed = base64_decode($message);
-            return gzuncompress($compressed) ?: $message;
-        } catch (\Exception $e) {
-            error_log('消息解压失败: ' . $e->getMessage());
-            return $message;
-        }
-    }
 
-    public function onOpen(ConnectionInterface $conn) {
-        // 验证CSRF令牌
-        $query = $conn->httpRequest->getUri()->getQuery();
-        parse_str($query, $params);
-        
-        if (empty($params['csrf_token']) || 
-            !hash_equals(SessionHelper::get($this->csrfTokenName), $params['csrf_token'])) {
-            $conn->close();
-            return;
-        }
-        
-        $this->clients->attach($conn);
-    }
-
-    public function onMessage(ConnectionInterface $from, $msg) {
-        $data = json_decode($msg, true);
-        
-        // 处理不同类型的消息
-        switch ($data['type'] ?? '') {
-            case 'subscribe_metrics':
-                // 客户端订阅监控数据
-                $this->clients[$from->resourceId]['subscribed'] = true;
-                $this->sendInitialMetrics($from);
-                break;
-                
-            default:
-                // 广播消息给所有客户端
-                foreach ($this->clients as $client) {
-                    if ($client !== $from) {
-                        $client->send($msg);
-                    }
-                }
-        }
-    }
-    
-    private function sendInitialMetrics(ConnectionInterface $client) {
-        $monitor = new SystemMonitorService();
-        $metrics = [
-            'type' => 'initial_metrics',
-            'data' => $monitor->getCurrentLoad(),
-            'compressed' => $this->enableCompression
-        ];
-        
-        $message = json_encode($metrics);
-        $signedMessage = $this->signMessage($message);
-        $compressedMessage = $this->compressMessage(json_encode($signedMessage));
-        
-        $client->send($compressedMessage);
-    }
-    
-    public function broadcastMetrics() {
-        $monitor = new SystemMonitorService();
-        $metrics = [
-            'type' => 'update_metrics',
-            'data' => $monitor->getCurrentLoad(),
-            'compressed' => $this->enableCompression
-        ];
-        
-        $message = json_encode($metrics);
-        $signedMessage = $this->signMessage($message);
-        $compressedMessage = $this->compressMessage(json_encode($signedMessage));
-        
+    public function broadcast($message) {
+        $frame = $this->createFrame($message);
         foreach ($this->clients as $client) {
-            if ($client['subscribed'] ?? false) {
-                $client->send($compressedMessage);
-            }
-        }
-    }
-    
-    public function onMessage(ConnectionInterface $from, $msg) {
-        try {
-            $decompressed = $this->decompressMessage($msg);
-            $data = json_decode($decompressed, true);
-            
-            // 验证签名和令牌
-            if (!$this->verifySignature($data) || 
-                !$this->verifyAuthToken($data['token'] ?? '')) {
-                error_log('WebSocket安全验证失败: ' . $from->resourceId);
-                $from->close();
-                return;
-            }
-            
-            // 处理消息内容
-            $message = json_decode($data['message'], true);
-            
-            switch ($message['type'] ?? '') {
-                case 'subscribe_metrics':
-                    // 客户端订阅监控数据
-                    $this->clients[$from->resourceId]['subscribed'] = true;
-                    $this->clients[$from->resourceId]['user_id'] = $this->getUserIdByToken($data['token']);
-                    $this->sendInitialMetrics($from);
-                    break;
-                    
-                case 'authenticate':
-                    // 更新客户端用户ID
-                    $this->clients[$from->resourceId]['user_id'] = $this->getUserIdByToken($data['token']);
-                    break;
-                    
-                default:
-                    // 广播消息给所有客户端
-                    foreach ($this->clients as $client) {
-                        if ($client !== $from) {
-                            $client->send($msg); // 保持原始消息格式
-                        }
-                    }
-            }
-        } catch (\Exception $e) {
-            error_log('WebSocket消息处理错误: ' . $e->getMessage());
-            $from->close();
-        }
-    }
-    
-    private function getUserIdByToken(string $token): ?int {
-        try {
-            $db = new DatabaseHelper();
-            $result = $db->getRow(
-                "SELECT user_id FROM ws_auth_tokens WHERE token = ? AND expires_at > NOW()",
-                [['value' => $token, 'type' => 's']]
-            );
-            
-            return $result['user_id'] ?? null;
-        } catch (Exception $e) {
-            error_log('获取用户ID失败: ' . $e->getMessage());
-            return null;
+            @socket_write($client, $frame, strlen($frame));
         }
     }
 
-    public function onClose(ConnectionInterface $conn) {
-        $this->clients->detach($conn);
+    private function createFrame($payload) {
+        $frame = [];
+        $payloadLength = strlen($payload);
+        
+        $frame[0] = 0x81; // 文本帧
+        
+        if ($payloadLength <= 125) {
+            $frame[1] = $payloadLength;
+        } elseif ($payloadLength <= 65535) {
+            $frame[1] = 126;
+            $frame[2] = ($payloadLength >> 8) & 0xFF;
+            $frame[3] = $payloadLength & 0xFF;
+        } else {
+            $frame[1] = 127;
+            for ($i = 0; $i < 8; $i++) {
+                $frame[2 + $i] = ($payloadLength >> (8 * (7 - $i))) & 0xFF;
+            }
+        }
+        
+        for ($i = 0; $i < $payloadLength; $i++) {
+            $frame[] = ord($payload[$i]);
+        }
+        
+        return implode(array_map("chr", $frame));
     }
 
-    public function onError(ConnectionInterface $conn, \Exception $e) {
-        error_log("WebSocket错误: {$e->getMessage()}");
-        $conn->close();
+    public function __destruct() {
+        socket_close($this->socket);
     }
 }

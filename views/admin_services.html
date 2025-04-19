@@ -21,8 +21,9 @@
                 <h2>安全服务管理</h2>
                 <div class="service-status"></div>
                 <div class="service-config">
+                    <?php $session = SessionHelper::getInstance(); ?>
                     <form id="securityConfigForm" class="service-form">
-                        <input type="hidden" name="csrf_token" value="<?php echo SessionHelper::get('csrf_token'); ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo $session->get('csrf_token'); ?>">
                         <!-- 原有表单内容 -->
                     </form>
                 </div>
