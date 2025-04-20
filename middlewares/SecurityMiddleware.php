@@ -58,9 +58,13 @@ class SecurityMiddleware {
     }
 
     private function setSecurityHeaders() {
-        foreach ($this->headers as $header => $value) {
-            header("$header: $value");
-        }
+        header_remove('X-Powered-By');
+        header('X-Frame-Options: DENY');
+        header('X-Content-Type-Options: nosniff');
+        header('X-XSS-Protection: 1; mode=block');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+        header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' cdn.jsdelivr.net; style-src \'self\' \'unsafe-inline\' cdn.jsdelivr.net;');
     }
 
     private function validateRequest() {
@@ -73,6 +77,28 @@ class SecurityMiddleware {
         if (!isset($_SERVER['HTTPS']) || $_SERVER['HTTPS'] !== 'on') {
             header('Location: https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
             exit;
+        }
+    }
+
+    private function checkSessionSecurity(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            if (!isset($_SESSION['CREATED'])) {
+                $_SESSION['CREATED'] = time();
+            } else if (time() - $_SESSION['CREATED'] > 300) {
+                session_regenerate_id(true);
+                $_SESSION['CREATED'] = time();
+            }
+        }
+    }
+
+    private function checkCSRF(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (!isset($_POST['csrf_token']) || 
+                $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+                throw new \Exception('CSRF token验证失败');
+            }
         }
     }
 }

@@ -115,4 +115,28 @@ class RateLimitService {
     private function getConcurrentRequests(): int {
         return $this->monitor->getCurrentLoad()['concurrent'];
     }
+
+    /**
+     * 检查速率限制
+     * @param string $key
+     * @param int $limit
+     * @param int $window
+     * @throws \Exception
+     */
+    public static function check($key, $limit = 30, $window = 60)
+    {
+        if (!function_exists('apcu_fetch')) return;
+        $data = apcu_fetch($key);
+        $now = time();
+        if (!$data || $data['expires'] < $now) {
+            $data = ['count' => 1, 'expires' => $now + $window];
+        } else {
+            $data['count']++;
+        }
+        apcu_store($key, $data, $window);
+
+        if ($data['count'] > $limit) {
+            throw new \Exception('操作过于频繁，请稍后再试');
+        }
+    }
 }

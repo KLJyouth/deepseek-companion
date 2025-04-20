@@ -93,4 +93,14 @@ class AuthMiddleware {
             throw new Exception("注销失败，请重试");
         }
     }
+
+    /**
+     * 检查用户是否已登录
+     * @return bool
+     */
+    public static function checkAuth(): bool
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+        return !empty($_SESSION['user_id']);
+    }
 }

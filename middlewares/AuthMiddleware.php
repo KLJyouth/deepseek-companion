@@ -360,7 +360,6 @@ class AuthMiddleware {
         // if (isset($_SESSION['jwt_token'])) { ... }
         // if (isset($_SESSION['2fa_verified']) && !$_SESSION['2fa_verified']) { ... }
     }
-}
 
     /**
      * JWT认证
@@ -442,5 +441,43 @@ class AuthMiddleware {
             }
         }
         return false;
+    }
+
+    /**
+     * 检查用户是否已认证，并可选检查角色
+     * @param string|null $role 需要的角色(admin/user)
+     * @throws \Exception
+     */
+    public static function check(?string $role = null)
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+        if (empty($_SESSION['user_id'])) {
+            LogHelper::getInstance()->info('未认证访问被拦截', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
+            throw new \Exception('未认证用户');
+        }
+        if ($role && (!isset($_SESSION['role']) || $_SESSION['role'] !== $role)) {
+            LogHelper::getInstance()->info('权限不足', [
+                'user_id' => $_SESSION['user_id'],
+                'required_role' => $role,
+                'actual_role' => $_SESSION['role'] ?? null
+            ]);
+            throw new \Exception('权限不足');
+        }
+    }
+
+    /**
+     * 密码确认操作（如敏感操作前调用）
+     * @throws \Exception
+     */
+    public static function confirmPassword($password)
+    {
+        // 假设有UserModel::find和password_hash存储
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) throw new \Exception('未认证');
+        $user = \Models\UserModel::find($userId);
+        if (!$user || !password_verify($password, $user->password)) {
+            LogHelper::getInstance()->info('密码确认失败', ['user_id' => $userId]);
+            throw new \Exception('密码错误');
+        }
     }
 }

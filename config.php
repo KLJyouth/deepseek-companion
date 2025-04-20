@@ -246,6 +246,28 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' cdn.jsdelivr.net; style-src \'self\' \'unsafe-inline\' cdn.jsdelivr.net; img-src \'self\' data:; font-src \'self\' cdn.jsdelivr.net');
 header('Strict-Transport-Security: max-age=63072000; includeSubDomains; preload');
 
+// ========== 安全配置增强 ==========
+define('SECURITY_CONFIG', [
+    'password_min_length' => 12,
+    'password_require_special' => true,
+    'password_require_numbers' => true,
+    'password_require_uppercase' => true,
+    'max_login_attempts' => 5,
+    'lockout_time' => 1800,
+    'session_regenerate_time' => 300,
+    'audit_log_retention_days' => 90,
+    'backup_retention_days' => 30,
+    'api_key_rotation_days' => 30,
+]);
+
+// 增加密钥轮换配置
+define('KEY_ROTATION', [
+    'enabled' => true,
+    'interval' => 86400,  // 24小时
+    'versions_to_keep' => 3,
+    'algorithm' => 'aes-256-gcm'
+]);
+
 // ========== 数据库连接初始化 ==========
 function initializeDatabaseConnection() {
     if (!defined('DB_HOST') || !defined('DB_USER') || !defined('DB_PASS') || !defined('DB_NAME')) {
@@ -302,3 +324,13 @@ try {
     include ROOT_PATH . '/maintenance.html';
     exit;
 }
+
+// 增加会话安全配置
+ini_set('session.gc_maxlifetime', 3600);
+ini_set('session.cookie_lifetime', 3600);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_samesite', 'Strict');
+ini_set('session.use_strict_mode', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.use_trans_sid', 0);
+ini_set('session.cache_limiter', 'nocache');

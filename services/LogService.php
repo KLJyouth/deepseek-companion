@@ -30,6 +30,15 @@ class LogService
         $this->log('ERROR', $message, $context);
     }
 
+    public function audit(string $action, array $context = []): void
+    {
+        $date = date('Y-m-d H:i:s');
+        $contextJson = !empty($context) ? json_encode($context, JSON_UNESCAPED_UNICODE) : '';
+        $logMessage = "[{$date}] AUDIT: {$action} {$contextJson}\n";
+        $logFile = $this->logPath . 'audit_' . date('Y-m-d') . '.log';
+        error_log($logMessage, 3, $logFile);
+    }
+
     private function log(string $level, string $message, array $context): void
     {
         $date = date('Y-m-d H:i:s');
