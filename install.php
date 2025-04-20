@@ -101,9 +101,9 @@ function write_env_file($data) {
 }
 
 function import_sql($mysqli, $file) {
-    try {
-        $mysqli->autocommit(false); // 开启事务
-        
+    $db = DatabaseHelper::getInstance();
+    
+    return $db->transaction(function($conn) use ($file) {
         $sql = file_get_contents($file);
         if ($sql === false) {
             throw new Exception("无法读取SQL文件: $file");
@@ -125,22 +125,15 @@ function import_sql($mysqli, $file) {
         foreach ($queries as $query) {
             if (empty($query)) continue;
             
-            if (!$mysqli->query($query)) {
-                throw new Exception("SQL执行失败: {$mysqli->error}\nSQL: {$query}");
+            if (!$conn->query($query)) {
+                throw new Exception("SQL执行失败: {$conn->error}\nSQL: {$query}");
             }
             $successCount++;
         }
         
-        $mysqli->commit();
         log_install("成功执行 {$successCount} 条SQL语句");
         return true;
-    } catch (Exception $e) {
-        $mysqli->rollback();
-        log_install("SQL导入失败: " . $e->getMessage());
-        throw $e;
-    } finally {
-        $mysqli->autocommit(true);
-    }
+    });
 }
 
 function render_form($error = '', $success = '', $defaults = []) {

@@ -420,35 +420,29 @@ SQL;
 
     public function beginTransaction(): bool 
     {
-        try {
-            $this->logger->info("Starting transaction");
-            return $this->connection->begin_transaction();
-        } catch (Exception $e) {
-            $this->logger->error("Transaction start failed: " . $e->getMessage());
-            throw $e;
-        }
+        $xid = TransactionManager::begin();
+        $this->currentXid = $xid;
+        return true;
     }
 
     public function commit(): bool
     {
-        try {
-            $this->logger->info("Committing transaction");
-            return $this->connection->commit();
-        } catch (Exception $e) {
-            $this->logger->error("Commit failed: " . $e->getMessage());
-            throw $e;
+        if (!$this->currentXid) {
+            throw new Exception('No active transaction');
         }
+        TransactionManager::commit($this->currentXid);
+        $this->currentXid = null;
+        return true;
     }
 
     public function rollback(): bool
     {
-        try {
-            $this->logger->info("Rolling back transaction");
-            return $this->connection->rollback();
-        } catch (Exception $e) {
-            $this->logger->error("Rollback failed: " . $e->getMessage());
-            throw $e;
+        if (!$this->currentXid) {
+            throw new Exception('No active transaction');
         }
+        TransactionManager::rollback($this->currentXid);
+        $this->currentXid = null;
+        return true;
     }
 
     public function transaction(callable $callback): mixed
@@ -460,7 +454,6 @@ SQL;
             return $result;
         } catch (Exception $e) {
             $this->rollback();
-            $this->logger->error("Transaction failed: " . $e->getMessage());
             throw $e;
         }
     }
@@ -759,10 +752,15 @@ SQL;
     }
     
     public function beginTransaction(): bool {
-        // 分布式事务支持
-        $xid = TransactionManager::begin();
-        $this->currentXid = $xid;
-        return true;
+        try {
+            $this->logger->info("Starting transaction");
+            $xid = TransactionManager::begin();
+            $this->currentXid = $xid;
+            return true;
+        } catch (Exception $e) {
+            $this->logger->error("Transaction start failed: " . $e->getMessage());
+            throw $e;
+        }
     }
     
     public function commit(): bool {
@@ -803,9 +801,9 @@ SQL;
         return $connection;
     }
 
-    public function logError(string $message): void
+    public function logError(string $message, array $context = []): void
     {
-        $this->logger->error($message);
+        $this->logger->error($message, $context);
     }
 
     public function getSlaveConnection()

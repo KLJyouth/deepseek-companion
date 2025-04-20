@@ -15,7 +15,10 @@ class ContractController {
     
     // 合同模板管理
     public function createTemplateAction() {
-        AuthMiddleware::verifyAdmin();
+        // 基本管理员验证
+        if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
+            throw new \Exception('无权访问');
+        }
         
         // 验证API签名
         $signature = $_SERVER['HTTP_X_API_SIGNATURE'] ?? '';
@@ -64,9 +67,23 @@ class ContractController {
 
     // 生成法大大签约URL
     public function getSignUrlAction() {
+        $contractId = $_POST['contract_id'] ?? '';
+        if (empty($contractId)) {
+            throw new \InvalidArgumentException('合同ID不能为空');
+        }
+        
         AuthMiddleware::verifyContractAccess($contractId);
         
-        $contract = DatabaseHelper::getInstance()->get('contracts', $contractId);
+        // 获取合同信息
+        $db = DatabaseHelper::getInstance();
+        $contract = $db->getRow(
+            "SELECT * FROM {$db->tablePrefix}contracts WHERE id = ?",
+            [['value' => $contractId, 'type' => 's']]
+        );
+        
+        if (!$contract) {
+            throw new \Exception('合同不存在');
+        }
         
         // 调用法大大API生成签约链接
         return [

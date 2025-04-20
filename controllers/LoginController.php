@@ -530,7 +530,7 @@ class LoginController {
         }
         
         try {
-            $this->auth->destroySession();
+            AuthMiddleware::destroySession();
         } catch (Exception $e) {
             error_log("销毁会话失败: " . $e->getMessage());
         }

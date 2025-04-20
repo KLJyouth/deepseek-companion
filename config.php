@@ -277,7 +277,7 @@ function initializeDatabaseConnection() {
     if (!$conn->real_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME)) {
         throw new \Exception(sprintf("数据库连接失败(主机:%s 用户:%s): %s", DB_HOST, DB_USER, $conn->connect_error));
     }
-    $dbHelper = new \Libs\DatabaseHelper($conn, DB_TABLE_PREFIX);
+    $dbHelper = new \Libs\DatabaseHelper(DB_TABLE_PREFIX);
     if (!$conn->query("SELECT 1")) {
         throw new \Exception("数据库查询测试失败: " . $conn->error);
     }

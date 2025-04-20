@@ -81,36 +81,11 @@ function check_dirs($dirs = [])
     return $results;
 }
 
-// 导入SQL文件
-function import_sql($mysqli, $file)
-{
-    try {
-        $mysqli->autocommit(false); // 开启事务
+// 引入DatabaseHelper
+require_once ROOT_PATH . '/libs/DatabaseHelper.php';
+require_once ROOT_PATH . '/install.php';
 
-        $sql = file_get_contents($file);
-        if ($sql === false) {
-            throw new Exception("无法读取SQL文件: $file");
-        }
-
-        $queries = array_filter(array_map('trim', explode(';', $sql)));
-        foreach ($queries as $query) {
-            if (!$mysqli->query($query)) {
-                throw new Exception("SQL执行失败: {$mysqli->error}\nSQL: {$query}");
-            }
-        }
-
-        $mysqli->commit();
-        log_install("SQL文件导入成功: $file");
-    } catch (Exception $e) {
-        $mysqli->rollback();
-        log_install("SQL导入失败: " . $e->getMessage());
-        throw $e;
-    } finally {
-        $mysqli->autocommit(true);
-    }
-}
-
-// ...existing helper functions like check_php_extensions, check_dirs, write_env_file, import_sql...
+// ...existing helper functions like check_php_extensions, check_dirs, write_env_file...
 
 // 仅当通过AJAX请求时执行
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && 
