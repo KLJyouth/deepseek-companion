@@ -4,17 +4,29 @@
  * 版权所有 广西港妙科技有限公司
  */
 
-require_once __DIR__ . '/config.php';
+// 定义测试环境常量
+define('TEST_ENVIRONMENT', true);
+
+// 优先初始化加密组件
 require_once __DIR__ . '/libs/CryptoHelper.php';
+\Libs\CryptoHelper::init(
+    'test_encryption_key_123', // 测试环境使用固定密钥
+    'test_initialization_vector' // IV参数
+);
 
-// 初始化加密组件
-\Libs\CryptoHelper::init([
-    'key' => 'test_encryption_key_123', // 测试环境使用固定密钥
-    'cipher' => 'AES-256-CBC'
-]);
+// 然后加载配置文件
+require_once __DIR__ . '/config.php';
 
+// 加载其他依赖
 require_once __DIR__ . '/services/ContractService.php';
+use Services\ContractService;
 require_once __DIR__ . '/middlewares/AuthMiddleware.php';
+
+// 重写config.php中的加密相关配置
+$GLOBALS['config']['encryption'] = [
+    'key' => 'test_encryption_key_123',
+    'cipher' => 'AES-256-CBC'
+];
 
 // 模拟认证
 session_start();

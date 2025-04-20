@@ -297,6 +297,50 @@ class ContractService
     }
 
     /**
+     * 检查合同签名合规性
+     * @param int $contractId 合同ID
+     * @return array 签名验证结果
+     */
+    public function checkSignatureCompliance(int $contractId): array
+    {
+        try {
+            return $this->compliance->checkSignatureCompliance($contractId);
+        } catch (\Exception $e) {
+            error_log("签名合规检查失败: " . $e->getMessage());
+            return [
+                'valid' => false,
+                'errors' => ['签名检查服务异常'],
+                'exception' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * 创建新合同
+     * @param array $contractData 合同数据
+     * @return int 新合同ID
+     */
+    public function createContract(array $contractData): int
+    {
+        $contract = new Contract();
+        $contract->title = $contractData['title'];
+        $contract->content = $this->crypto->encrypt($contractData['content']);
+        $contract->created_by = $_SESSION['user_id'] ?? 0;
+        $contract->status = 'draft';
+        
+        if ($contract->save()) {
+            // 关联合同参与方
+            foreach ($contractData['parties'] as $partyId) {
+                $contract->parties()->attach($partyId);
+            }
+            
+            return $contract->id;
+        }
+        
+        throw new \RuntimeException('合同创建失败');
+    }
+
+    /**
      * 检查合同条款合规性
      * @param string $content 合同内容
      * @return array 合规性结果
