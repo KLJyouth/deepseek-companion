@@ -87,11 +87,11 @@ function render_form($error = '', $success = '', $defaults = []) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI伴侣 - 一键安装</title>
+        <title>stanfai-司单服Ai智能安全法务 - 智能安装</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
             body {
-                background: linear-gradient(135deg, #0f2027, #2c5364 80%);
+                background: linear-gradient(135deg, #0d1020 60%, #1a2233 100%);
                 min-height: 100vh;
                 font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
                 color: #e3eafc;
@@ -99,8 +99,8 @@ function render_form($error = '', $success = '', $defaults = []) {
             }
             .install-container {
                 max-width: 480px;
-                margin: 6vh auto 0 auto;
-                background: rgba(30,40,60,0.92);
+                margin: 7vh auto 0 auto;
+                background: rgba(30,40,60,0.93);
                 border-radius: 18px;
                 box-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
                 padding: 2.5rem 2rem 2rem 2rem;
@@ -108,17 +108,15 @@ function render_form($error = '', $success = '', $defaults = []) {
                 z-index: 2;
             }
             .install-title {
-                font-size: 2.2rem;
+                font-size: 2.3rem;
                 font-weight: 700;
                 letter-spacing: 2px;
                 text-align: center;
                 margin-bottom: 1.5rem;
                 color: #fff;
-                text-shadow: 0 2px 8px #1e88e5;
+                text-shadow: 0 2px 12px #43cea2;
             }
-            .form-label {
-                color: #b0c7f9;
-            }
+            .form-label { color: #b0c7f9; }
             .btn-install {
                 background: linear-gradient(90deg, #1e88e5 60%, #43cea2 100%);
                 border: none;
@@ -138,25 +136,25 @@ function render_form($error = '', $success = '', $defaults = []) {
                 position: fixed;
                 z-index: 9999;
                 top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(10,20,40,0.98);
+                background: #050a18;
                 justify-content: center;
                 align-items: center;
                 flex-direction: column;
             }
-            #globe-bg {
+            #space-bg-canvas {
                 position: absolute;
-                top: 0; left: 0; right: 0; bottom: 0;
-                width: 100vw; height: 100vh;
-                z-index: 1;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: 0;
                 pointer-events: none;
             }
             #sbLogoAnim {
-                width: 180px;
-                height: 180px;
+                width: 160px;
+                height: 160px;
                 border-radius: 50%;
                 box-shadow: 0 0 32px #43cea2, 0 0 8px #1e88e5;
                 margin-bottom: 2rem;
                 background: #000;
+                z-index: 2;
             }
             .install-progress {
                 color: #b0c7f9;
@@ -164,17 +162,24 @@ function render_form($error = '', $success = '', $defaults = []) {
                 margin-top: 1.5rem;
                 text-align: center;
                 letter-spacing: 1px;
+                z-index: 2;
+            }
+            .install-error {
+                color: #ff6b6b;
+                font-weight: bold;
+                margin-top: 1.5rem;
+                text-align: center;
+                z-index: 2;
             }
             @media (max-width: 600px) {
                 .install-container { padding: 1.2rem 0.5rem; }
-                #sbLogoAnim { width: 120px; height: 120px; }
+                #sbLogoAnim { width: 100px; height: 100px; }
             }
         </style>
     </head>
     <body>
-        <div id="globe-bg"></div>
         <div class="install-container" id="installFormContainer">
-            <div class="install-title">AI伴侣 - 一键安装</div>
+            <div class="install-title">stanfai-司单服Ai智能安全法务 智能安装</div>
             <form id="installForm" autocomplete="off">
                 <div class="mb-3">
                     <label class="form-label">数据库主机</label>
@@ -204,49 +209,81 @@ function render_form($error = '', $success = '', $defaults = []) {
             </form>
         </div>
         <div class="install-anim-mask" id="install-anim-mask">
-            <canvas id="globe-canvas" style="position:absolute;top:0;left:0;width:100vw;height:100vh;z-index:0;"></canvas>
+            <canvas id="space-bg-canvas"></canvas>
             <video id="sbLogoAnim" src="src/sb-logo.mp4" autoplay loop muted playsinline></video>
             <div class="install-progress" id="installProgressText">正在安装，请稍候...</div>
+            <div class="install-error" id="installErrorText" style="display:none;"></div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
         <script>
-        // 3D地球动画
-        function initGlobe() {
-            const canvas = document.getElementById('globe-canvas');
+        // 太空舱俯瞰地球动画
+        function initSpaceGlobe() {
+            const canvas = document.getElementById('space-bg-canvas');
             if (!canvas) return;
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-            renderer.setClearColor(0x0f2027, 0.0);
+            renderer.setClearColor(0x050a18, 1);
             renderer.setSize(window.innerWidth, window.innerHeight);
 
             const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.z = 3.2;
+
+            // 星空背景
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 1200;
+            const starVertices = [];
+            for (let i = 0; i < starCount; i++) {
+                const r = 100 + Math.random() * 200;
+                const theta = Math.random() * 2 * Math.PI;
+                const phi = Math.acos(2 * Math.random() - 1);
+                starVertices.push(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.sin(phi) * Math.sin(theta),
+                    r * Math.cos(phi)
+                );
+            }
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8 });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
 
             // 地球体
-            const geometry = new THREE.SphereGeometry(1, 64, 64);
-            const texture = new THREE.TextureLoader().load('https://cdn.jsdelivr.net/gh/StanFai/earth-assets/earth-night.jpg');
-            const material = new THREE.MeshPhongMaterial({
-                map: texture,
-                shininess: 30,
+            const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
+            const earthTexture = new THREE.TextureLoader().load('https://cdn.jsdelivr.net/gh/StanFai/earth-assets/earth-night.jpg');
+            const earthMaterial = new THREE.MeshPhongMaterial({
+                map: earthTexture,
+                shininess: 40,
                 specular: 0x43cea2,
                 emissive: 0x1e88e5,
-                emissiveIntensity: 0.15
+                emissiveIntensity: 0.18
             });
-            const earth = new THREE.Mesh(geometry, material);
+            const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            earth.position.set(0, -0.2, 0);
             scene.add(earth);
 
+            // 太空舱窗户（圆形遮罩）
+            const windowGeometry = new THREE.CircleGeometry(2.1, 128);
+            const windowMaterial = new THREE.MeshBasicMaterial({ color: 0x111a2a, opacity: 0.6, transparent: true, side: THREE.DoubleSide });
+            const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
+            windowMesh.position.set(0, 0, 1.5);
+            scene.add(windowMesh);
+
             // 光源
-            const light = new THREE.PointLight(0x43cea2, 1.2, 100);
+            const light = new THREE.PointLight(0xffffff, 1.2, 100);
             light.position.set(5, 3, 5);
             scene.add(light);
             scene.add(new THREE.AmbientLight(0x1e88e5, 0.5));
 
+            // 相机设置为俯瞰视角
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2.5, 3.5);
+            camera.lookAt(0, 0, 0);
+
             // 动画
             function animate() {
-                earth.rotation.y += 0.002;
+                earth.rotation.y += 0.003; // 地球自转
+                stars.rotation.y += 0.0005;
                 renderer.render(scene, camera);
                 requestAnimationFrame(animate);
             }
@@ -265,15 +302,18 @@ function render_form($error = '', $success = '', $defaults = []) {
             var formContainer = document.getElementById('installFormContainer');
             var mask = document.getElementById('install-anim-mask');
             var progressText = document.getElementById('installProgressText');
+            var errorText = document.getElementById('installErrorText');
             var video = document.getElementById('sbLogoAnim');
 
             installForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 formContainer.style.display = 'none';
                 mask.style.display = 'flex';
+                progressText.innerHTML = "正在安装，请稍候...";
+                errorText.style.display = 'none';
                 video.currentTime = 0;
                 video.play();
-                initGlobe();
+                initSpaceGlobe();
 
                 // 提交安装请求
                 var formData = new FormData(installForm);
@@ -289,7 +329,9 @@ function render_form($error = '', $success = '', $defaults = []) {
                             window.location.href = 'install_result.php';
                         }, 1200);
                     } else {
-                        progressText.innerHTML = "安装失败：" + (data && data.error ? data.error : "未知错误");
+                        progressText.innerHTML = "";
+                        errorText.innerHTML = "安装出现错误，请重试";
+                        errorText.style.display = 'block';
                         setTimeout(function() {
                             mask.style.display = 'none';
                             formContainer.style.display = '';
@@ -297,28 +339,14 @@ function render_form($error = '', $success = '', $defaults = []) {
                     }
                 })
                 .catch(() => {
-                    progressText.innerHTML = "安装过程中发生错误，请重试。";
+                    progressText.innerHTML = "";
+                    errorText.innerHTML = "安装出现错误，请重试";
+                    errorText.style.display = 'block';
                     setTimeout(function() {
                         mask.style.display = 'none';
                         formContainer.style.display = '';
                     }, 2500);
                 });
-
-                // 轮询进度（如有install_status.php可用）
-                // function checkInstallStatus() {
-                //     fetch('install_status.php')
-                //         .then(resp => resp.json())
-                //         .then(data => {
-                //             if (data && data.status === 'done') {
-                //                 mask.style.display = 'none';
-                //                 window.location.href = 'install_result.php';
-                //             } else {
-                //                 setTimeout(checkInstallStatus, 1500);
-                //             }
-                //         })
-                //         .catch(() => setTimeout(checkInstallStatus, 2000));
-                // }
-                // checkInstallStatus();
             });
         });
         </script>
