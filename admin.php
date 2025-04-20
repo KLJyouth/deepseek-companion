@@ -2,54 +2,94 @@
 // 开启session
 session_start();
 
+// 错误处理
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+});
+
+// 导入所需类
+require_once __DIR__ . '/libs/CryptoHelper.php';
+require_once __DIR__ . '/libs/ConfigHelper.php';
+require_once __DIR__ . '/libs/DatabaseHelper.php';
+require_once __DIR__ . '/libs/SecurityManager.php';
+require_once __DIR__ . '/libs/SecurityPredictor.php';
+require_once __DIR__ . '/libs/SecurityAuditHelper.php'; 
+require_once __DIR__ . '/models/Contract.php';
+require_once __DIR__ . '/models/ContractSignature.php';
+require_once __DIR__ . '/models/ContractTemplate.php';
+
 // 检查登录状态
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
     header("Location: login.php");
     exit;
 }
 
-// 数据库配置
-require_once 'config.php';
-require_once 'controllers/MonitorController.php';
+try {
+    // 初始化安全管理器
+    $securityManager = new \Libs\SecurityManager();
+    $securityManager->init();
 
-// 监控API路由
-if (isset($_GET['monitor'])) {
-    $monitor = new MonitorController();
-    if ($_GET['monitor'] === 'metrics') {
-        $monitor->metrics();
-    } else {
-        $monitor->dashboard();
+    // 数据库配置
+    $db = new \Libs\DatabaseHelper(
+        $GLOBALS['config']['db']['host'],
+        $GLOBALS['config']['db']['user'],
+        $GLOBALS['config']['db']['pass'],
+        $GLOBALS['config']['db']['name']
+    );
+
+    // 监控API路由 
+    if (isset($_GET['monitor'])) {
+        $monitor = new MonitorController($db);
+        
+        try {
+            if ($_GET['monitor'] === 'metrics') {
+                $result = $monitor->metrics();
+                if($result !== null) {
+                    echo json_encode($result);
+                }
+            } else {
+                $monitor->dashboard();
+            }
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit;
     }
-    exit;
+
+    // 获取用户数据
+    $user_id = (int)$_SESSION['user_id']; 
+    $current_user = getUserData($user_id);
+
+    // 获取统计数据
+    $stats = getDashboardStats();
+    $apiUsage = getApiUsageData();
+    $userDistribution = getUserDistributionData();
+
+    // 其他初始化
+    $threatPrediction = null;
+    if(class_exists('\Admin\Services\SecurityService')) {
+        $securityService = new \Admin\Services\SecurityService();
+        $threatPrediction = $securityService->predictThreat();
+    }
+
+} catch (\Exception $e) {
+    error_log($e->getMessage());
+    die('系统错误,请联系管理员');
 }
 
-// 获取用户数据
-$user_id = $_SESSION['user_id'];
-$current_user = getUserData($user_id);
-
-// 获取统计数据
-$stats = getDashboardStats();
-$apiUsage = getApiUsageData();
-$userDistribution = getUserDistributionData();
-
-// 获取模型设置
-$modelSettings = getModelSettings($user_id);
-
-// 获取用户列表
-$users = getAllUsers();
-
-// 函数定义
+// 辅助函数定义
 function getUserData($user_id) {
-    global $conn;
-    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
+    global $db;
+    return $db->query(
+        "SELECT * FROM users WHERE id = ?",
+        [$user_id]
+    )->fetch_assoc();
 }
 
 function getDashboardStats() {
-    global $conn;
-    $result = $conn->query("
+    global $db;
+    $result = $db->query("
         SELECT 
             COUNT(*) as total_users,
             SUM(last_active > NOW() - INTERVAL 7 DAY) as active_users,
@@ -61,8 +101,8 @@ function getDashboardStats() {
 }
 
 function getApiUsageData() {
-    global $conn;
-    $result = $conn->query("
+    global $db;
+    $result = $db->query("
         SELECT 
             DATE_FORMAT(date, '%Y-%m') as month,
             SUM(api_calls) as calls
@@ -75,8 +115,8 @@ function getApiUsageData() {
 }
 
 function getUserDistributionData() {
-    global $conn;
-    $result = $conn->query("
+    global $db;
+    $result = $db->query("
         SELECT 
             country,
             COUNT(*) as users
@@ -88,16 +128,16 @@ function getUserDistributionData() {
 }
 
 function getModelSettings($user_id) {
-    global $conn;
-    $stmt = $conn->prepare("SELECT * FROM user_settings WHERE user_id = ?");
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
+    global $db;
+    return $db->query(
+        "SELECT * FROM user_settings WHERE user_id = ?",
+        [$user_id]
+    )->fetch_assoc();
 }
 
 function getAllUsers() {
-    global $conn;
-    $result = $conn->query("SELECT * FROM users ORDER BY created_at DESC LIMIT 100");
+    global $db;
+    $result = $db->query("SELECT * FROM users ORDER BY created_at DESC LIMIT 100");
     return $result->fetch_all(MYSQLI_ASSOC);
 }
 ?>
@@ -125,9 +165,7 @@ function getAllUsers() {
             
             <!-- 安全态势警告 -->
             <?php 
-            $securityService = new \Admin\Services\SecurityService();
-            $threatPrediction = $securityService->predictThreat();
-            if ($threatPrediction['risk_level'] === 'high'): ?>
+            if ($threatPrediction && $threatPrediction['risk_level'] === 'high'): ?>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <strong>安全警告!</strong> 系统检测到高风险威胁: <?= implode(', ', $threatPrediction['attack_types']) ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
