@@ -10,8 +10,8 @@ define('TEST_ENVIRONMENT', true);
 // 优先初始化加密组件
 require_once __DIR__ . '/libs/CryptoHelper.php';
 \Libs\CryptoHelper::init(
-    'test_encryption_key_123', // 测试环境使用固定密钥
-    'test_initialization_vector' // IV参数
+    '0123456789abcdef0123456789abcdef', // 32字节测试密钥
+    '123456789012' // 12字节IV (AES-256-GCM要求)
 );
 
 // 然后加载配置文件
