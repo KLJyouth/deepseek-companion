@@ -14,7 +14,7 @@ $end = isset($_GET['end']) ? strtotime($_GET['end']) : time();
 
 // 获取监控数据
 $monitor = new MonitorController();
-$metrics = $monitor->metrics();
+$metrics = $monitor->metrics($start, $end);
 
 ?>
 <!DOCTYPE html>

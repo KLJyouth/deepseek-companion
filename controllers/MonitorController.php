@@ -104,4 +104,81 @@ class MonitorController
         // 实现规则验证逻辑
         return true;
     }
+
+    public function metrics($start, $end) {
+        // 获取时间标签
+        $timeLabels = $this->getTimeLabels($start, $end);
+
+        return [
+            'cpu' => [
+                'labels' => $timeLabels,
+                'datasets' => [[
+                    'label' => 'CPU使用率(%)',
+                    'data' => $this->fetchDataFromSource('cpu', $start, $end),
+                    'borderColor' => 'rgb(75, 192, 192)',
+                    'tension' => 0.1
+                ]]
+            ],
+            'memory' => [
+                'labels' => $timeLabels,
+                'datasets' => [[
+                    'label' => '内存使用率(%)',
+                    'data' => $this->fetchDataFromSource('memory', $start, $end),
+                    'borderColor' => 'rgb(255, 99, 132)',
+                    'tension' => 0.1
+                ]]
+            ],
+            'concurrent' => [
+                'labels' => $timeLabels,
+                'datasets' => [[
+                    'label' => '并发请求数',
+                    'data' => $this->fetchDataFromSource('concurrent', $start, $end),
+                    'borderColor' => 'rgb(54, 162, 235)',
+                    'tension' => 0.1
+                ]]
+            ],
+            'throughput' => [
+                'labels' => $timeLabels,
+                'datasets' => [[
+                    'label' => '请求吞吐量',
+                    'data' => $this->fetchDataFromSource('throughput', $start, $end),
+                    'borderColor' => 'rgb(153, 102, 255)',
+                    'tension' => 0.1
+                ]]
+            ]
+        ];
+    }
+
+    private function getTimeLabels($start, $end) {
+        $labels = [];
+        $interval = ($end - $start) / 12; // 分成12段
+        for ($i = 0; $i < 12; $i++) {
+            $labels[] = date('H:i', $start + $i * $interval);
+        }
+        return $labels;
+    }
+
+    private function fetchDataFromSource($metric, $start, $end) {
+        // 假设从数据库或API获取数据
+        // 这里以数据库为例
+        $db = $this->getDatabaseConnection();
+        $query = $db->prepare("SELECT value FROM metrics WHERE metric = :metric AND timestamp BETWEEN :start AND :end ORDER BY timestamp ASC");
+        $query->execute([
+            ':metric' => $metric,
+            ':start' => $start,
+            ':end' => $end
+        ]);
+        return $query->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    private function getDatabaseConnection() {
+        // 配置数据库连接
+        $dsn = 'mysql:host=localhost;dbname=monitoring;charset=utf8mb4';
+        $username = 'root';
+        $password = '';
+        return new PDO($dsn, $username, $password, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+        ]);
+    }
 }
