@@ -271,7 +271,7 @@ final class CryptoHelper {
         );
         
         if ($ciphertext === false) {
-            throw new \RuntimeException('加密失败: ' . openssl_error_string());
+            throw new \RuntimeException('加密失败: ' . (openssl_error_string() ?: '未知错误'));
         }
         
         return [
@@ -282,13 +282,27 @@ final class CryptoHelper {
     
     /**
      * AES-256-GCM解密
-     * @param array{ciphertext:string, tag:string} $encrypted 加密数据数组
+     * @param array|string $encrypted 加密数据数组或字符串
      * @return mixed 解密后的原始数据(自动JSON解码如果可能)
      * @throws \RuntimeException 如果解密失败
      */
-    public static function decrypt(array $encrypted) {
+    public static function decrypt($encrypted) {
         if (!isset(self::$encryptionKey)) {
             throw new \RuntimeException('加密组件未初始化，请先调用init()');
+        }
+
+        // 兼容字符串和数组
+        if (is_string($encrypted)) {
+            $decoded = json_decode($encrypted, true);
+            if (is_array($decoded) && isset($decoded['ciphertext'], $decoded['tag'])) {
+                $encrypted = $decoded;
+            } else {
+                throw new \RuntimeException('解密参数格式错误');
+            }
+        }
+
+        if (!is_array($encrypted) || !isset($encrypted['ciphertext'], $encrypted['tag'])) {
+            throw new \RuntimeException('解密参数缺失ciphertext或tag');
         }
         
         $ciphertext = base64_decode($encrypted['ciphertext']);
@@ -304,7 +318,7 @@ final class CryptoHelper {
         );
         
         if ($data === false) {
-            throw new \RuntimeException('解密失败: ' . openssl_error_string());
+            throw new \RuntimeException('解密失败: ' . (openssl_error_string() ?: '未知错误'));
         }
         
         // 尝试自动JSON解码

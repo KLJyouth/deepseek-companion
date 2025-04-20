@@ -20,60 +20,9 @@ final class DatabaseHelper {
     private $slaveConns = [];
     private $maxConnections = 10;
 
-    private function __construct(\mysqli $conn = null, string $prefix = 'ac_') {
-        if ($conn) {
-            $this->conn = $conn;
-        } else {
-            // 使用ConfigHelper获取配置，避免直接使用常量
-            $config = ConfigHelper::getDatabaseConfig();
-            
-            // 增加连接重试机制
-            $retries = 3;
-            while ($retries > 0) {
-                try {
-                    $this->conn = new \mysqli(
-                        $config['host'],
-                        $config['user'],
-                        $config['pass'],
-                        $config['name'],
-                        $config['port'] ?? 3306
-                    );
-                    if (!$this->conn->connect_error) {
-                        break;
-                    }
-                    $retries--;
-                    if ($retries > 0) {
-                        sleep(1); // 重试前等待1秒
-                    }
-                } catch (\Exception $e) {
-                    if ($retries <= 0) {
-                        throw new DatabaseException(
-                            "Database connection failed after 3 attempts", 
-                            $e->getCode(), 
-                            $e
-                        );
-                    }
-                    $retries--;
-                    sleep(1);
-                }
-            }
-
-            // 设置连接属性
-            $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
-            $this->conn->set_charset($config['charset'] ?? 'utf8mb4');
-            
-            // 设置严格模式
-            $this->conn->query("SET SESSION sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_DATE'");
-        }
-        
-        $this->tablePrefix = defined('DB_TABLE_PREFIX') ? DB_TABLE_PREFIX : $prefix;
-        $this->logger = LogHelper::getInstance();
-
-        // 初始化主从连接
-        $this->initReplication();
-        
-        // 初始化连接池
-        $this->initConnectionPool();
+    public function __construct($conn = null, $prefix = '') {
+        $this->conn = $conn ?: (isset($GLOBALS['conn']) ? $GLOBALS['conn'] : null);
+        $this->prefix = $prefix;
     }
 
     private function validateConnection() {

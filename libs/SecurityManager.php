@@ -8,37 +8,24 @@ use Libs\DatabaseHelper;
  * AI驱动的动态安全管理系统
  */
 class SecurityManager {
-    private static $instance;
+    private static $instance = null;
+    public $crypto;
+    public $quantumCrypto;
+    public $auditHelper;
     private $currentRiskLevel = 3; // 默认中等风险
     private $apiEndpoints = [];
     private $decoySystems = [];
-    private $crypto;
-    private $quantumCrypto;
     private $logger;
     
     private function __construct() {
-        $this->initSecurityComponents();
+        $this->crypto = class_exists('\Libs\CryptoHelper') ? new \Libs\CryptoHelper() : null;
+        $this->quantumCrypto = class_exists('\Libs\QuantumCryptoHelper') ? new \Libs\QuantumCryptoHelper() : null;
+        $this->auditHelper = class_exists('\Libs\SecurityAuditHelper') ? new \Libs\SecurityAuditHelper() : null;
         $this->initDefaultConfig();
         $this->logger = new LogHelper();
     }
 
-    private function initSecurityComponents(): void {
-        // 初始化加密组件
-        if (class_exists('Libs\CryptoHelper')) {
-            $this->crypto = CryptoHelper::getInstance();
-        }
-        
-        if (class_exists('Libs\QuantumCryptoHelper')) {
-            $this->quantumCrypto = QuantumCryptoHelper::getInstance();
-        }
-        
-        // 初始化安全审计
-        if (class_exists('Libs\SecurityAuditHelper')) {
-            $this->auditHelper = new SecurityAuditHelper();
-        }
-    }
-    
-    public static function getInstance(): self {
+    public static function getInstance() {
         if (self::$instance === null) {
             self::$instance = new self();
         }

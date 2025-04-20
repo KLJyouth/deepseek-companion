@@ -20,7 +20,7 @@ class AuthMiddleware {
      * @return bool 是否已登录
      */
     public static function checkAuth(): bool {
-        if (session_status() === PHP_SESSION_NONE) {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
         return !empty($_SESSION['user_id']);
@@ -319,5 +319,36 @@ class AuthMiddleware {
             $userRole,
             $requiredRole
         );
+    }
+
+    /**
+     * 检查用户认证与权限
+     * @param string $requiredRole 需要的角色（如'admin'或'user'）
+     * @throws \Exception
+     */
+    public static function check(string $requiredRole = 'user')
+    {
+        // 自动启动会话
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            session_start();
+        }
+
+        // 检查是否已登录
+        if (empty($_SESSION['user_id'])) {
+            throw new \Exception('未认证用户');
+        }
+
+        // RBAC权限分级校验
+        $role = $_SESSION['role'] ?? 'user';
+        $roles = ['user' => 1, 'admin' => 2];
+        if (isset($roles[$requiredRole]) && isset($roles[$role])) {
+            if ($roles[$role] < $roles[$requiredRole]) {
+                throw new \Exception('权限不足');
+            }
+        }
+
+        // 预留多认证方式（如JWT、2FA、设备指纹等）
+        // if (isset($_SESSION['jwt_token'])) { ... }
+        // if (isset($_SESSION['2fa_verified']) && !$_SESSION['2fa_verified']) { ... }
     }
 }

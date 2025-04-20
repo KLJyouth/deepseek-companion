@@ -2,6 +2,8 @@
 namespace Models;
 
 use Traits\InputValidation;
+use Models\BaseModel;
+use Models\ContractSignature;
 
 class Contract extends BaseModel
 {
