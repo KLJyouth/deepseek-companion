@@ -5,6 +5,14 @@
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/libs/CryptoHelper.php';
+
+// 初始化加密组件
+\Libs\CryptoHelper::init([
+    'key' => 'test_encryption_key_123', // 测试环境使用固定密钥
+    'cipher' => 'AES-256-CBC'
+]);
+
 require_once __DIR__ . '/services/ContractService.php';
 require_once __DIR__ . '/middlewares/AuthMiddleware.php';
 
