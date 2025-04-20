@@ -1,4 +1,4 @@
-<?php
+mei<?php
 namespace Libs;
 
 use Exception;
@@ -14,7 +14,24 @@ class SecurityManager {
     private $decoySystems = [];
     
     private function __construct() {
+        $this->initSecurityComponents();
         $this->initDefaultConfig();
+    }
+
+    private function initSecurityComponents(): void {
+        // 初始化加密组件
+        if (class_exists('Libs\CryptoHelper')) {
+            $this->crypto = CryptoHelper::getInstance();
+        }
+        
+        if (class_exists('Libs\QuantumCryptoHelper')) {
+            $this->quantumCrypto = QuantumCryptoHelper::getInstance();
+        }
+        
+        // 初始化安全审计
+        if (class_exists('Libs\SecurityAuditHelper')) {
+            $this->auditHelper = new SecurityAuditHelper();
+        }
     }
     
     public static function getInstance(): self {
