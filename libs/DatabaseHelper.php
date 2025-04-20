@@ -412,4 +412,35 @@ SQL;
         $stmt = $this->secureQuery($sql, $params);
         return $stmt->affected_rows;
     }
+
+    public function beginTransaction(): bool
+    {
+        $this->logger->info('Begin transaction');
+        return $this->connection->begin_transaction();
+    }
+
+    public function commit(): bool 
+    {
+        $this->logger->info('Commit transaction');
+        return $this->connection->commit();
+    }
+
+    public function rollback(): bool
+    {
+        $this->logger->info('Rollback transaction');
+        return $this->connection->rollback();
+    }
+
+    public function transaction(callable $callback)
+    {
+        try {
+            $this->beginTransaction();
+            $result = $callback($this);
+            $this->commit();
+            return $result;
+        } catch (\Exception $e) {
+            $this->rollback();
+            throw $e;
+        }
+    }
 }

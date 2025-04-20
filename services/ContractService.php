@@ -16,12 +16,16 @@ class ContractService
 {
     private $db;
     private $crypto;
+    private $cache;
 
-    public function __construct()
-    {
-        $this->db = new DatabaseHelper();
+    public function __construct(
+        DatabaseHelper $db = null,
+        CacheService $cache = null
+    ) {
+        $this->db = $db ?? DatabaseHelper::getInstance();
         $this->crypto = new CryptoHelper();
         $this->compliance = new ComplianceService();
+        $this->cache = $cache ?? CacheService::getInstance();
     }
 
     /**
@@ -322,22 +326,65 @@ class ContractService
      */
     public function createContract(array $contractData): int
     {
-        $contract = new Contract();
-        $contract->title = $contractData['title'];
-        $contract->content = $this->crypto->encrypt($contractData['content']);
-        $contract->created_by = $_SESSION['user_id'] ?? 0;
-        $contract->status = 'draft';
+        $start = microtime(true);
         
-        if ($contract->save()) {
-            // 关联合同参与方
-            foreach ($contractData['parties'] as $partyId) {
-                $contract->parties()->attach($partyId);
-            }
+        try {
+            $this->validateContractData($contractData);
             
-            return $contract->id;
+            return $this->db->transaction(function($db) use ($contractData) {
+                $contract = new Contract();
+                $contract->title = $contractData['title'];
+                $contract->content = $this->crypto->encrypt($contractData['content']);
+                $contract->created_by = $_SESSION['user_id'] ?? 0;
+                $contract->status = 'draft';
+                
+                if ($contract->save()) {
+                    // 关联合同参与方
+                    foreach ($contractData['parties'] as $partyId) {
+                        $contract->parties()->attach($partyId);
+                    }
+                    
+                    $this->cache->delete('contracts:list');
+                    
+                    // 记录性能指标
+                    $duration = microtime(true) - $start;
+                    $this->logPerformance('contract_creation', $duration);
+                    
+                    return $contract->id;
+                }
+                
+                throw new \RuntimeException('合同创建失败');
+            });
+        } catch (\Exception $e) {
+            $this->logPerformance('contract_creation_failed', microtime(true) - $start);
+            throw $e;
         }
-        
-        throw new \RuntimeException('合同创建失败');
+    }
+
+    private function logPerformance(string $operation, float $duration): void
+    {
+        $this->db->insert('performance_logs', [
+            'operation' => $operation,
+            'duration' => $duration,
+            'memory_used' => memory_get_peak_usage(true),
+            'timestamp' => date('Y-m-d H:i:s')
+        ]);
+    }
+
+    /**
+     * 获取合同
+     * @param int $id 合同ID
+     * @return array|null 合同数据
+     */
+    public function getContract(int $id): ?array
+    {
+        return $this->cache->remember(
+            "contract:{$id}",
+            fn() => $this->db->query(
+                "SELECT * FROM contracts WHERE id = ?",
+                [$id]
+            )->fetch_assoc()
+        );
     }
 
     /**
