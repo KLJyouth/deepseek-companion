@@ -15,19 +15,71 @@ final class DatabaseHelper {
     private static ?self $instance = null;
     private string $tablePrefix;
     private \mysqli $conn;
+    private $connectionPool = [];
+    private $masterConn;
+    private $slaveConns = [];
+    private $maxConnections = 10;
 
     private function __construct(\mysqli $conn = null, string $prefix = 'ac_') {
-        // 初始化数据库连接
         if ($conn) {
             $this->conn = $conn;
         } else {
-            $this->conn = new \mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+            // 使用ConfigHelper获取配置，避免直接使用常量
+            $config = ConfigHelper::getDatabaseConfig();
+            
+            // 增加连接重试机制
+            $retries = 3;
+            while ($retries > 0) {
+                try {
+                    $this->conn = new \mysqli(
+                        $config['host'],
+                        $config['user'],
+                        $config['pass'],
+                        $config['name'],
+                        $config['port'] ?? 3306
+                    );
+                    if (!$this->conn->connect_error) {
+                        break;
+                    }
+                    $retries--;
+                    if ($retries > 0) {
+                        sleep(1); // 重试前等待1秒
+                    }
+                } catch (\Exception $e) {
+                    if ($retries <= 0) {
+                        throw new DatabaseException(
+                            "Database connection failed after 3 attempts", 
+                            $e->getCode(), 
+                            $e
+                        );
+                    }
+                    $retries--;
+                    sleep(1);
+                }
+            }
+
+            // 设置连接属性
+            $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
+            $this->conn->set_charset($config['charset'] ?? 'utf8mb4');
+            
+            // 设置严格模式
+            $this->conn->query("SET SESSION sql_mode = 'STRICT_ALL_TABLES,NO_ZERO_DATE'");
         }
-        if ($this->conn->connect_error) {
-            throw new Exception("Database connection failed: " . $this->conn->connect_error);
-        }
-        $this->conn->set_charset(DB_CHARSET);
+        
         $this->tablePrefix = defined('DB_TABLE_PREFIX') ? DB_TABLE_PREFIX : $prefix;
+        $this->logger = LogHelper::getInstance();
+
+        // 初始化主从连接
+        $this->initReplication();
+        
+        // 初始化连接池
+        $this->initConnectionPool();
+    }
+
+    private function validateConnection() {
+        if (!$this->conn || !$this->conn->ping()) {
+            throw new DatabaseException("Database connection lost");
+        }
     }
 
     public static function setTablePrefix(string $prefix): void {
@@ -442,5 +494,329 @@ SQL;
             $this->rollback();
             throw $e;
         }
+    }
+
+    public function query($sql, $params = []) {
+        try {
+            $stmt = $this->conn->prepare($sql);
+            if (!$stmt) {
+                throw new \Exception("SQL预处理失败: " . $this->conn->error);
+            }
+
+            if (!empty($params)) {
+                $types = '';
+                $values = [];
+                $refs = [];
+                
+                foreach ($params as $param) {
+                    $value = $param['value'];
+                    if (isset($param['encrypt']) && $param['encrypt']) {
+                        $value = CryptoHelper::encrypt($value);
+                    }
+                    
+                    $types .= $this->getParamType($value);
+                    $values[] = $value;
+                    $refs[] = &$values[count($values) - 1];
+                }
+                
+                array_unshift($refs, $types);
+                call_user_func_array([$stmt, 'bind_param'], $refs);
+            }
+            
+            if (!$stmt->execute()) {
+                throw new \Exception("SQL执行失败: " . $stmt->error);
+            }
+            
+            return $stmt;
+        } catch (\Exception $e) {
+            $this->logError("数据库查询错误", [
+                'sql' => $this->maskSensitiveData($sql),
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    private function getParamType($value) {
+        return match(gettype($value)) {
+            'integer' => 'i',
+            'double' => 'd',
+            'string' => 's',
+            'NULL' => 's',
+            default => 's'
+        };
+    }
+
+    private function maskSensitiveData($sql) {
+        return preg_replace('/\b(password|key|token|secret)\b\s*=\s*\'[^\']*\'/i', '$1=***', $sql);
+    }
+
+    private function initReplication() {
+        $config = ConfigHelper::getDatabaseConfig();
+        $this->masterConn = $this->createConnection($config['master']);
+        
+        foreach ($config['slaves'] as $slave) {
+            $this->slaveConns[] = $this->createConnection($slave);
+        }
+    }
+    
+    private function initConnectionPool() {
+        $config = ConfigHelper::getDatabaseConfig();
+        $poolSize = $config['pool_size'] ?? $this->maxConnections;
+        
+        for ($i = 0; $i < $poolSize; $i++) {
+            $this->connectionPool[$i] = [
+                'conn' => null,
+                'last_used' => 0,
+                'transactions' => 0,
+                'queries' => 0
+            ];
+        }
+        
+        $this->monitor = new \Services\ConnectionPoolMonitor();
+    }
+    
+    private function getConnection($isWrite = false) {
+        $start = microtime(true);
+        
+        // 优先获取空闲连接
+        foreach ($this->connectionPool as &$pool) {
+            if (!$pool['conn'] || 
+                (!$pool['transactions'] && time() - $pool['last_used'] > 30)) {
+                $pool['conn'] = $isWrite ? $this->masterConn : $this->getSlaveConnection();
+                $pool['last_used'] = time();
+                $pool['queries'] = 0;
+                
+                // 记录获取连接的响应时间
+                $this->recordConnectionMetrics($start);
+                return $pool['conn'];
+            }
+        }
+        
+        // 如果没有空闲连接，等待并重试
+        usleep(100000); // 等待100ms
+        return $this->getConnection($isWrite);
+    }
+    
+    private function recordConnectionMetrics($startTime) {
+        $responseTime = (microtime(true) - $startTime) * 1000;
+        
+        // 使用增强的模型评估
+        $mlService = new MLPredictionService();
+        $evaluator = new ModelEvaluationService();
+        
+        $predictions = $mlService->getPredictions([
+            'lstm' => ['window_size' => 24, 'evaluate' => true],
+            'xgboost' => ['max_depth' => 6, 'evaluate' => true],
+            'prophet' => ['changepoint_prior_scale' => 0.05, 'evaluate' => true],
+            'neural_network' => ['layers' => [64, 32], 'evaluate' => true]
+        ]);
+        
+        // 使用增强的分布式锁与监控
+        $lock = new EnhancedDistributedLock('metrics_update', [
+            'expire' => 5000,
+            'retry' => ['times' => 3, 'delay' => 100],
+            'priority' => $this->isPriorityOperation(),
+            'monitor' => true
+        ]);
+
+        if ($lock->acquire()) {
+            try {
+                $metrics = [
+                    'pool_stats' => $this->getPoolStats(),
+                    'response_time' => $responseTime,
+                    'memory_usage' => memory_get_usage(true),
+                    'ml_predictions' => $predictions,
+                    'model_evaluation' => $evaluator->getModelPerformanceHistory('all'),
+                    'charts' => $this->getEnhancedChartData()
+                ];
+                
+                // 增强模型评估和自动调优
+                $autoTuner = new ModelAutoTuningService();
+                $dashboard = new MonitoringDashboardService();
+                
+                $enhancedMetrics = array_merge($metrics, [
+                    'model_evaluation' => [
+                        'basic_metrics' => $evaluator->calculateBasicMetrics($predictions),
+                        'advanced_metrics' => $evaluator->calculateAdvancedMetrics($predictions),
+                        'tuning_status' => $autoTuner->getTuningStatus(),
+                        'optimization_results' => $autoTuner->getLatestResults()
+                    ],
+                    'dashboard' => $dashboard->generateDashboard()
+                ]);
+                
+                // 增强AB测试和版本控制
+                $abTest = new ModelABTestingService();
+                $versionControl = new ModelVersionControl();
+                
+                $testResults = $abTest->runTest('performance_model', [
+                    'metrics' => $metrics,
+                    'sample_size' => 1000
+                ]);
+                
+                if ($this->shouldPromoteModel($testResults)) {
+                    $versionControl->promoteVersion(
+                        'performance_model',
+                        $testResults['B']['version']
+                    );
+                }
+                
+                $enhancedMetrics['ab_test_results'] = $testResults;
+                $this->monitor->recordMetrics($enhancedMetrics);
+                
+                // 自动触发模型调优
+                if ($this->shouldTriggerAutoTuning($enhancedMetrics)) {
+                    $autoTuner->scheduleTuning();
+                }
+            } finally {
+                $lock->release();
+            }
+        }
+    }
+
+    private function shouldTriggerAutoTuning(array $metrics): bool {
+        return $metrics['model_evaluation']['basic_metrics']['accuracy'] < 0.95 ||
+               $metrics['model_evaluation']['performance']['latency'] > 100;
+    }
+
+    private function getEnhancedChartData(): array {
+        return [
+            'performance_trends' => [
+                'type' => 'line',
+                'data' => $this->getPerformanceTrends(),
+                'options' => ['responsive' => true]
+            ],
+            'resource_heatmap' => [
+                'type' => 'heatmap',
+                'data' => $this->getResourceUsageHeatmap(),
+                'options' => ['scale' => 'custom']
+            ],
+            'anomaly_scatter' => [
+                'type' => 'scatter',
+                'data' => $this->getAnomalyScatterData(),
+                'options' => ['regression' => true]
+            ],
+            'prediction_gauge' => [
+                'type' => 'gauge',
+                'data' => $this->getPredictionGaugeData(),
+                'options' => ['min' => 0, 'max' => 100]
+            ],
+            'correlation_matrix' => [
+                'type' => 'matrix',
+                'data' => $this->getMetricsCorrelation(),
+                'options' => ['colorScale' => 'diverging']
+            ]
+        ];
+    }
+
+    private function getCustomChartData(): array {
+        return [
+            'performance_trends' => $this->getPerformanceTrends(),
+            'resource_usage' => $this->getResourceUsageData(),
+            'anomaly_detection' => $this->getAnomalyData(),
+            'custom_metrics' => $this->loadCustomMetrics()
+        ];
+    }
+    
+    private function isPriorityOperation(): bool {
+        return $this->currentXid !== null || 
+               $this->isSystemMaintenance() || 
+               $this->isEmergencyOperation();
+    }
+
+    private function getPoolStats(): array {
+        $stats = [
+            'active' => 0,
+            'idle' => 0,
+            'total' => count($this->connectionPool)
+        ];
+        
+        foreach ($this->connectionPool as $pool) {
+            if ($pool['conn']) {
+                if ($pool['transactions'] > 0) {
+                    $stats['active']++;
+                } else {
+                    $stats['idle']++;
+                }
+            }
+        }
+        
+        return $stats;
+    }
+
+    private function getModelMetrics(): array {
+        return (new ModelPerformanceMonitor())->getMetrics();
+    }
+    
+    public function transaction(callable $callback) {
+        $conn = $this->getConnection(true);
+        $xid = null;
+        
+        try {
+            // 启动分布式事务
+            $xid = $this->beginTransaction($conn);
+            
+            // 执行事务回调
+            $result = $callback($this);
+            
+            // 预提交
+            if ($this->prepareCommit($xid)) {
+                $this->commit($xid);
+            } else {
+                throw new \Exception("Transaction prepare failed");
+            }
+            
+            return $result;
+        } catch (\Exception $e) {
+            if ($xid) {
+                $this->rollback($xid);
+            }
+            throw $e;
+        } finally {
+            $this->releaseConnection($conn);
+        }
+    }
+    
+    private function prepareCommit(string $xid): bool {
+        // 实现两阶段提交的准备阶段
+        $prepared = true;
+        foreach ($this->participants[$xid] ?? [] as $participant) {
+            if (!$participant->prepare()) {
+                $prepared = false;
+                break;
+            }
+        }
+        return $prepared;
+    }
+    
+    public function beginTransaction(): bool {
+        // 分布式事务支持
+        $xid = TransactionManager::begin();
+        $this->currentXid = $xid;
+        return true;
+    }
+    
+    public function commit(): bool {
+        if ($this->currentXid) {
+            return TransactionManager::commit($this->currentXid);
+        }
+        return false;
+    }
+    
+    public function rollback(): bool {
+        if ($this->currentXid) {
+            return TransactionManager::rollback($this->currentXid);
+        }
+        return false;
+    }
+}
+
+class DatabaseException extends \Exception {
+    public function __construct(string $message, int $code = 0, \Throwable $previous = null) {
+        parent::__construct($message, $code, $previous);
+        LogHelper::getInstance()->error("Database Error: {$message}", [
+            'code' => $code,
+            'trace' => $this->getTraceAsString()
+        ]);
     }
 }

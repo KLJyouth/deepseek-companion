@@ -1,4 +1,4 @@
-mei<?php
+<?php
 namespace Libs;
 
 use Exception;
@@ -12,10 +12,14 @@ class SecurityManager {
     private $currentRiskLevel = 3; // 默认中等风险
     private $apiEndpoints = [];
     private $decoySystems = [];
+    private $crypto;
+    private $quantumCrypto;
+    private $logger;
     
     private function __construct() {
         $this->initSecurityComponents();
         $this->initDefaultConfig();
+        $this->logger = new LogHelper();
     }
 
     private function initSecurityComponents(): void {
@@ -143,15 +147,36 @@ class SecurityManager {
     /**
      * 检查请求是否合法
      */
-    public function validateRequest(string $path): bool {
-        // 如果是诱饵路径，记录攻击尝试
-        if (isset($this->decoySystems[$path])) {
-            $this->logAttackAttempt($path);
-            return false;
+    public function validateRequest(array $request): bool {
+        $rules = [
+            'sql_injection' => '/(\bunion\b|\bselect\b|\binsert\b|\bupdate\b|\bdelete\b|\bdrop\b|\balter\b)/i',
+            'xss' => '/<[^>]*?>|\bjavascript:|<script|\bonload\b|\bonerror\b/i',
+            'path_traversal' => '/\.\.\/|\.\.\\/',
+            'command_injection' => '/[;&|`]/'
+        ];
+
+        foreach ($request as $key => $value) {
+            if ($this->matchesPattern($value, $rules)) {
+                $this->logger->alert("检测到潜在攻击", [
+                    'type' => 'request_validation',
+                    'key' => $key,
+                    'value' => substr($value, 0, 100)
+                ]);
+                return false;
+            }
         }
+        return true;
+    }
+
+    private function matchesPattern($value, array $rules): bool {
+        if (!is_string($value)) return false;
         
-        // 检查请求路径是否在暴露的API中
-        return in_array($path, $this->apiEndpoints['exposed']);
+        foreach ($rules as $type => $pattern) {
+            if (preg_match($pattern, $value)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**

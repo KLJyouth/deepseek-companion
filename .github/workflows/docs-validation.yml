@@ -1,0 +1,35 @@
+name: Docs Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+      - '**.php'
+
+jobs:
+  validate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      
+      - name: Install dependencies
+        run: composer install
+      
+      - name: Validate documentation
+        run: php tools/validate-docs.php
+      
+      - name: Generate diff report
+        if: always()
+        run: php tools/generate-diff-report.php
+      
+      - name: Upload validation results
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs-validation-report
+          path: docs/validation-report.md

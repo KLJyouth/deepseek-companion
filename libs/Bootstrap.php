@@ -106,8 +106,8 @@ final class Bootstrap {
                 throw new \Exception("设置字符集失败: " . $conn->error);
             }
             
-            // 创建数据库助手实例
-            new DatabaseHelper($conn);
+            // 初始化数据库助手单例
+            DatabaseHelper::getInstance();
             
             // 验证数据库版本和兼容性
             $version = $conn->server_version;
