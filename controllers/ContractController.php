@@ -106,4 +106,63 @@ class ContractController {
     private function submitDeepseekAudit($contractId) {
         // 调用DeepSeek审计接口
     }
+
+    /**
+     * 检查合同合规性API
+     * @param int $contractId 合同ID
+     * @return array 合规性报告
+     */
+    public function checkComplianceAction($contractId) {
+        AuthMiddleware::verifyContractAccess($contractId);
+        
+        try {
+            $contractService = new \Services\ContractService();
+            $report = $contractService->checkContractCompliance($contractId);
+            
+            return [
+                'success' => true,
+                'data' => $report,
+                'timestamp' => time()
+            ];
+        } catch (\Exception $e) {
+            error_log("合规检查API错误: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => '合规检查失败',
+                'detail' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * 检查合同条款合规性API
+     * @param string $content 合同内容
+     * @return array 合规性结果
+     */
+    public function checkClausesComplianceAction() {
+        AuthMiddleware::verifyAuth();
+        
+        $content = $_POST['content'] ?? '';
+        if (empty($content)) {
+            throw new \InvalidArgumentException('合同内容不能为空');
+        }
+        
+        try {
+            $contractService = new \Services\ContractService();
+            $result = $contractService->checkClausesCompliance($content);
+            
+            return [
+                'success' => true,
+                'data' => $result,
+                'timestamp' => time()
+            ];
+        } catch (\Exception $e) {
+            error_log("条款合规检查API错误: " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => '条款合规检查失败',
+                'detail' => $e->getMessage()
+            ];
+        }
+    }
 }

@@ -160,4 +160,48 @@ class SecurityService
             ]);
         }
     }
+
+    /**
+     * 安全态势预测
+     */
+    public function predictThreat(): array {
+        // 获取近期威胁数据
+        $threats = DatabaseHelper::getInstance()->getRows(
+            "SELECT * FROM threat_intelligence 
+             WHERE created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+             ORDER BY created_at DESC"
+        );
+
+        // 获取系统指标
+        $metrics = (new SystemMonitorService())->sampleMetrics();
+
+        // 调用AI预测模型
+        $prediction = $this->callPredictionModel([
+            'threats' => $threats,
+            'metrics' => $metrics
+        ]);
+
+        return [
+            'risk_level' => $prediction['risk_level'] ?? 'medium',
+            'attack_types' => $prediction['attack_types'] ?? [],
+            'confidence' => $prediction['confidence'] ?? 0.75,
+            'recommended_actions' => $prediction['recommended_actions'] ?? []
+        ];
+    }
+
+    private function callPredictionModel(array $data): array {
+        $ch = curl_init(self::MODEL_ENDPOINT.'/predict');
+        curl_setopt_array($ch, [
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-API-Key: '.getenv('AI_FIREWALL_KEY')
+            ],
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode(['instances' => [$data]]),
+            CURLOPT_RETURNTRANSFER => true
+        ]);
+
+        $response = json_decode(curl_exec($ch), true);
+        return $response['predictions'][0] ?? [];
+    }
 }

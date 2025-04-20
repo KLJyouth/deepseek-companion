@@ -43,8 +43,14 @@
             </div>
 
             <div class="sign-actions">
+                <button type="button" id="checkCompliance" class="btn-secondary">合规检查</button>
                 <button type="button" id="submitSign" class="btn-primary">确认签署</button>
                 <button type="button" id="cancelSign" class="btn-secondary">取消</button>
+            </div>
+
+            <div id="complianceResult" style="display:none; margin-top:20px; padding:15px; border:1px solid #ddd; border-radius:4px;">
+                <h4>合规检查结果</h4>
+                <div id="complianceDetails"></div>
             </div>
         </div>
     </div>

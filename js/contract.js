@@ -141,6 +141,111 @@ class ContractManager {
         });
     }
 
+    // 初始化事件监听
+    initEventListeners() {
+        // 合同列表页面
+        if (document.getElementById('contractTableBody')) {
+            document.getElementById('refreshList').addEventListener('click', () => this.loadContracts());
+            document.getElementById('statusFilter').addEventListener('change', () => this.loadContracts());
+            document.getElementById('searchInput').addEventListener('input', () => this.loadContracts());
+            this.loadContracts();
+        }
+
+        // 合同创建页面
+        if (document.getElementById('contractForm')) {
+            document.getElementById('addParty').addEventListener('click', () => this.addPartyField());
+            document.getElementById('contractForm').addEventListener('submit', (e) => this.handleCreateContract(e));
+            document.getElementById('cancelCreate').addEventListener('click', () => window.location.href = 'index.html');
+        }
+
+        // 合同签署页面
+        if (document.getElementById('signaturePad')) {
+            this.initSignaturePad();
+            document.querySelectorAll('input[name="signMethod"]').forEach(radio => {
+                radio.addEventListener('change', (e) => this.toggleSignMethod(e.target.value));
+            });
+            document.getElementById('submitSign').addEventListener('click', () => this.handleSignContract());
+            document.getElementById('cancelSign').addEventListener('click', () => window.history.back());
+            document.getElementById('checkCompliance').addEventListener('click', () => this.handleComplianceCheck());
+        }
+
+        // 合同查看页面
+        if (document.getElementById('contractStatus')) {
+            this.loadContractDetails();
+            document.getElementById('backToList').addEventListener('click', () => window.location.href = 'index.html');
+        }
+    }
+
+    // 处理合规检查
+    async handleComplianceCheck() {
+        const contractId = new URLSearchParams(window.location.search).get('id');
+        if (!contractId) {
+            alert('无法获取合同ID');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/contracts/${contractId}/compliance`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                this.displayComplianceResult(result.data);
+            } else {
+                alert(`合规检查失败: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('合规检查失败:', error);
+            alert('合规检查失败，请稍后重试');
+        }
+    }
+
+    // 展示合规检查结果
+    displayComplianceResult(data) {
+        const resultContainer = document.getElementById('complianceResult');
+        const detailsContainer = document.getElementById('complianceDetails');
+        
+        resultContainer.style.display = 'block';
+        detailsContainer.innerHTML = '';
+        
+        // 显示签名合规结果
+        const signatureDiv = document.createElement('div');
+        signatureDiv.innerHTML = `
+            <h5>电子签名合规性</h5>
+            <p>标准: ${data.signature.standard}</p>
+            <p>状态: ${data.signature.valid ? '✅ 合规' : '❌ 不合规'}</p>
+            ${data.signature.errors.length ? `
+                <div class="alert alert-warning">
+                    <strong>问题:</strong>
+                    <ul>
+                        ${data.signature.errors.map(err => `<li>${err}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+        `;
+        detailsContainer.appendChild(signatureDiv);
+        
+        // 显示条款合规结果
+        const clausesDiv = document.createElement('div');
+        clausesDiv.innerHTML = `
+            <h5>合同条款合规性</h5>
+            <p>状态: ${data.clauses.valid ? '✅ 合规' : '❌ 不合规'}</p>
+        `;
+        detailsContainer.appendChild(clausesDiv);
+        
+        // 显示总体合规状态
+        const overallDiv = document.createElement('div');
+        overallDiv.className = data.overall_compliance ? 'alert alert-success' : 'alert alert-danger';
+        overallDiv.textContent = data.overall_compliance 
+            ? '合同完全合规，可以签署' 
+            : '合同存在合规问题，请修改后再签署';
+        detailsContainer.appendChild(overallDiv);
+    }
+
     // 处理合同签署
     async handleSignContract() {
         const contractId = new URLSearchParams(window.location.search).get('id');

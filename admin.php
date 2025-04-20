@@ -122,6 +122,17 @@ function getAllUsers() {
         <div class="row">
             <!-- 侧边栏导航 -->
             <?php include 'sidebar.php'; ?>
+            
+            <!-- 安全态势警告 -->
+            <?php 
+            $securityService = new \Admin\Services\SecurityService();
+            $threatPrediction = $securityService->predictThreat();
+            if ($threatPrediction['risk_level'] === 'high'): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <strong>安全警告!</strong> 系统检测到高风险威胁: <?= implode(', ', $threatPrediction['attack_types']) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <?php endif; ?>
 
     <!-- 主内容区 -->
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
@@ -152,23 +163,35 @@ function getAllUsers() {
                 <?php include 'dashboard.php'; ?>
             </div>
 
-                    <!-- 模型设置 -->
-                    <div class="tab-pane fade" id="settings">
-                        <!-- 模型设置内容 -->
-                        <?php include 'settings.php'; ?>
-                    </div>
+                <!-- 模型设置 -->
+                <div class="tab-pane fade" id="settings">
+                    <!-- 模型设置内容 -->
+                    <?php include 'settings.php'; ?>
+                </div>
 
-                    <!-- 数据分析 -->
-                    <div class="tab-pane fade" id="analytics">
-                        <!-- 数据分析内容 -->
-                        <?php include 'analytics.php'; ?>
-                    </div>
+                <!-- 数据分析 -->
+                <div class="tab-pane fade" id="analytics">
+                    <!-- 数据分析内容 -->
+                    <?php include 'analytics.php'; ?>
+                </div>
 
-                    <!-- 用户管理 -->
-                    <div class="tab-pane fade" id="users">
-                        <!-- 用户管理内容 -->
-                        <?php include 'users.php'; ?>
-                    </div>
+                <!-- 用户管理 -->
+                <div class="tab-pane fade" id="users">
+                    <!-- 用户管理内容 -->
+                    <?php include 'users.php'; ?>
+                </div>
+                
+                <!-- 安全态势 -->
+                <div class="tab-pane fade" id="security">
+                    <!-- 安全态势内容 -->
+                    <?php include 'security_dashboard.php'; ?>
+                </div>
+                
+                <!-- 合同模板 -->
+                <div class="tab-pane fade" id="contracts">
+                    <!-- 合同模板内容 -->
+                    <?php include 'contract_templates.php'; ?>
+                </div>
                 </div>
             </main>
         </div>

@@ -180,6 +180,15 @@ document.addEventListener('DOMContentLoaded', function() {
             switch (data.type) {
                 case 'initial_metrics':
                 case 'update_metrics':
+                    // 更新安全态势标记
+                    updateThreatMarkers(data.threats);
+                    // 更新计数器
+                    updateCounter('threat-count', data.threats.length);
+                    break;
+                case 'threat_prediction':
+                    // 显示预测结果
+                    showPrediction(data.prediction);
+                    break;
                     // 更新计数器
                     updateCounter('user-count', data.data.users);
                     updateCounter('request-count', data.data.requests);
@@ -189,6 +198,79 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('消息处理失败:', e);
         }
     });
+
+    // 更新安全威胁标记
+    function updateThreatMarkers(threats) {
+        // 清除现有威胁标记
+        scene.children.filter(obj => obj.isThreatMarker).forEach(marker => scene.remove(marker));
+        
+        // 添加新威胁标记
+        threats.forEach(threat => {
+            const markerGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+            const markerMaterial = new THREE.MeshBasicMaterial({ 
+                color: getThreatColor(threat.severity),
+                transparent: true,
+                opacity: 0.8
+            });
+            const markerMesh = new THREE.Mesh(markerGeometry, markerMaterial);
+            markerMesh.isThreatMarker = true;
+            
+            // 设置标记位置
+            const phi = (90 - threat.latitude) * (Math.PI / 180);
+            const theta = (180 - threat.longitude) * (Math.PI / 180);
+            
+            markerMesh.position.set(
+                -Math.sin(phi) * Math.cos(theta) * 2.05,
+                Math.cos(phi) * 2.05,
+                Math.sin(phi) * Math.sin(theta) * 2.05
+            );
+            
+            // 添加脉冲动画
+            addPulseAnimation(markerMesh);
+            scene.add(markerMesh);
+        });
+    }
+
+    // 根据威胁等级获取颜色
+    function getThreatColor(severity) {
+        switch(severity) {
+            case 'critical': return 0xff0000;
+            case 'high': return 0xff6600;
+            case 'medium': return 0xffff00;
+            case 'low': return 0x00ff00;
+            default: return 0xffffff;
+        }
+    }
+
+    // 添加脉冲动画
+    function addPulseAnimation(marker) {
+        let scale = 1;
+        let direction = 0.01;
+        
+        function animate() {
+            scale += direction;
+            if (scale > 1.2) direction = -0.01;
+            if (scale < 0.8) direction = 0.01;
+            
+            marker.scale.set(scale, scale, scale);
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+    }
+
+    // 显示预测结果
+    function showPrediction(prediction) {
+        const predictionElement = document.getElementById('prediction-panel');
+        predictionElement.innerHTML = `
+            <h4>安全态势预测</h4>
+            <p>风险等级: <span class="risk-${prediction.risk_level}">${prediction.risk_level}</span></p>
+            <p>置信度: ${(prediction.confidence * 100).toFixed(1)}%</p>
+            <p>潜在攻击类型: ${prediction.attack_types.join(', ')}</p>
+            <p>建议措施: ${prediction.recommended_actions.join('; ')}</p>
+        `;
+        predictionElement.style.display = 'block';
+    }
     
     // 解压消息
     async function decompressMessage(data) {
