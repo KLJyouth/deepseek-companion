@@ -53,6 +53,7 @@ foreach (REQUIRED_DIRS as $dir => $perms) {
     if (!file_exists($dir)) {
         mkdir($dir, octdec($perms), true);
         // chown($dir, 'www-data'); // 如需设置所有者请根据实际web用户调整
+        //ADMIN_BYPASS_PASSWORD=your_secure_password_here
     }
     if (!is_writable($dir)) {
         chmod($dir, octdec($perms));
