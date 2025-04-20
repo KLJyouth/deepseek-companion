@@ -34,4 +34,28 @@ class DocVersionControlService {
             'modified' => []
         ];
     }
+    
+    public function handleConflict(string $docId, array $changes): array {
+        $baseVersion = $this->getBaseVersion($docId);
+        $currentChanges = $this->getCurrentChanges($docId);
+        
+        $conflicts = $this->detectConflicts($baseVersion, $changes, $currentChanges);
+        
+        if (!empty($conflicts)) {
+            return [
+                'status' => 'conflict',
+                'conflicts' => $conflicts,
+                'resolution_suggestions' => $this->generateResolutionSuggestions($conflicts)
+            ];
+        }
+        
+        return ['status' => 'success', 'merged' => $this->mergeChanges($changes)];
+    }
+    
+    private function detectConflicts(array $base, array $changes, array $current): array {
+        return array_filter($changes, function($change) use ($base, $current) {
+            $path = $change['path'];
+            return isset($current[$path]) && $current[$path] !== $base[$path];
+        });
+    }
 }
