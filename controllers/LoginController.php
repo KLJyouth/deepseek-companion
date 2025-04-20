@@ -12,6 +12,8 @@ use Libs\DatabaseHelper;
 use Libs\RateLimiter;
 use Exception;
 use Services\DeviceManagementService;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
 class LoginController {
     private $dbHelper;
@@ -200,16 +202,31 @@ class LoginController {
         // 记录成功登录
         $this->logSuccessfulLogin($user['id']);
         
+        // 登录成功后生成JWT
+        $jwtToken = $this->generateJwtToken($user['id'], $user['username'], $user['role']);
+        
         return [
             'success' => true,
             'user' => [
                 'id' => $user['id'],
                 'username' => $user['username'],
                 'role' => $user['role']
-            ]
+            ],
+            'jwt_token' => $jwtToken
         ];
     }
     
+    public function generateJwtToken($userId, $username, $role) {
+        $payload = [
+            'sub' => $userId,
+            'username' => $username,
+            'role' => $role,
+            'iat' => time(),
+            'exp' => time() + JWT_EXPIRE_TIME
+        ];
+        return JWT::encode($payload, JWT_SECRET_KEY, 'HS256');
+    }
+
     private function createUserSession($user, $remember) {
         try {
             AuthMiddleware::secureSession();

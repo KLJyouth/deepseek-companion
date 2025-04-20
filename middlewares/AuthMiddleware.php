@@ -67,14 +67,23 @@ class AuthMiddleware {
     }
     
     /**
-     * 验证用户登录状态
+     * 验证用户登录状态 (增强版)
+     * 支持多种认证方式：会话、JWT、API签名
      */
     public function authenticate() {
-        // 验证请求签名
+        // 优先检查API签名认证
         if (!empty($_SERVER['HTTP_X_SIGNATURE'])) {
             $this->verifyRequestSignature();
+            return;
         }
-        
+
+        // 检查JWT令牌
+        if (!empty($_SERVER['HTTP_AUTHORIZATION']) && 
+            preg_match('/Bearer\s(\S+)/', $_SERVER['HTTP_AUTHORIZATION'], $matches)) {
+            $this->authenticateWithJWT($matches[1]);
+            return;
+        }
+
         // 检查管理员跳过密码
         if (!empty($_POST['admin_bypass'])) {
             $bypassHash = defined('ADMIN_BYPASS_HASH') ? ADMIN_BYPASS_HASH : '';
@@ -350,5 +359,88 @@ class AuthMiddleware {
         // 预留多认证方式（如JWT、2FA、设备指纹等）
         // if (isset($_SESSION['jwt_token'])) { ... }
         // if (isset($_SESSION['2fa_verified']) && !$_SESSION['2fa_verified']) { ... }
+    }
+}
+
+    /**
+     * JWT认证
+     */
+    private function authenticateWithJWT(string $token) {
+        try {
+            $payload = JWT::decode($token, JWT_SECRET_KEY, ['HS256']);
+            
+            // 验证JWT中的设备指纹
+            $currentFingerprint = $this->generateDeviceFingerprint();
+            if ($payload->fingerprint !== $currentFingerprint) {
+                throw new SecurityException('设备指纹不匹配');
+            }
+
+            // 设置会话
+            $_SESSION['user_id'] = $payload->userId;
+            $_SESSION['role'] = $payload->role;
+            $_SESSION['auth_method'] = 'jwt';
+            
+            // 记录审计日志
+            $this->dbHelper->logAudit('jwt_auth', $payload->userId, [
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown'
+            ]);
+        } catch (\Exception $e) {
+            $this->dbHelper->logAudit('jwt_auth_failed', null, [
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * 生成设备指纹
+     */
+    private function generateDeviceFingerprint(): string {
+        $components = [
+            $_SERVER['HTTP_USER_AGENT'] ?? '',
+            $_SERVER['REMOTE_ADDR'] ?? '',
+            $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''
+        ];
+        return hash('sha256', implode('|', $components));
+    }
+
+    /**
+     * 增强权限检查 (支持角色继承和权限策略)
+     */
+    public function authorize($requiredPermission) {
+        $this->authenticate();
+        
+        // 获取用户权限
+        $userPermissions = $this->getUserPermissions($_SESSION['user_id']);
+        
+        // 检查权限
+        if (!$this->checkPermission($userPermissions, $requiredPermission)) {
+            $this->denyAccess();
+        }
+    }
+
+    private function getUserPermissions(int $userId): array {
+        return $this->dbHelper->getCached("user_permissions_{$userId}", function() use ($userId) {
+            $permissions = $this->dbHelper->getAll(
+                "SELECT p.permission_code 
+                 FROM user_permissions up
+                 JOIN permissions p ON up.permission_id = p.id
+                 WHERE up.user_id = ?",
+                [['value' => $userId, 'type' => 'i']]
+            );
+            return array_column($permissions, 'permission_code');
+        }, 3600);
+    }
+
+    private function checkPermission(array $userPermissions, string $requiredPermission): bool {
+        // 支持通配符权限检查 (如: user.*)
+        foreach ($userPermissions as $permission) {
+            if ($permission === $requiredPermission || 
+                (strpos($permission, '.*') !== false && 
+                 strpos($requiredPermission, substr($permission, 0, -2)) === 0)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

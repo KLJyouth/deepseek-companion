@@ -455,6 +455,11 @@ function initializeDatabaseConnection() {
         throw new \Exception("数据库查询测试失败: " . $conn->error);
     }
 }
+
+// ==================== JWT 配置 ====================
+define('JWT_SECRET_KEY', env('JWT_SECRET_KEY', 'your-secure-key-here'));
+define('JWT_EXPIRE_TIME', env('JWT_EXPIRE_TIME', 3600)); // 单位：秒，默认1小时
+
 // ==================== 应用初始化 ====================
 try {
     // 初始化数据库连接
