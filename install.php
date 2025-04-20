@@ -10,8 +10,56 @@ define('ENV_FILE', ROOT_PATH . '/.env');
 define('SQL_FILE', ROOT_PATH . '/ai_companion_db.sql');
 define('LOG_FILE', ROOT_PATH . '/logs/install.log');
 
-function log_install($msg) {
-    file_put_contents(LOG_FILE, '['.date('Y-m-d H:i:s').'] '.$msg.PHP_EOL, FILE_APPEND);
+// 安装处理器函数
+function handle_installation($postData)
+{
+    $response = ['success' => false];
+
+    try {
+        // 验证必填字段
+        $required = ['DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME'];
+        foreach ($required as $field) {
+            if (empty($postData[$field])) {
+                throw new Exception("请填写所有必填项");
+            }
+        }
+
+        // 数据库连接测试
+        $mysqli = @new mysqli(
+            $postData['DB_HOST'],
+            $postData['DB_USERNAME'],
+            $postData['DB_PASSWORD'],
+            '',
+            (int) $postData['DB_PORT']
+        );
+
+        if ($mysqli->connect_error) {
+            throw new Exception("数据库连接失败: " . $mysqli->connect_error);
+        }
+
+        $response['success'] = true;
+        $response['nextStep'] = 'db_create';
+
+    } catch (Exception $e) {
+        $response['error'] = $e->getMessage();
+    }
+
+    header('Content-Type: application/json');
+    die(json_encode($response));
+}
+
+// 仅当通过AJAX请求时执行
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest'
+) {
+    handle_installation($_POST);
+}
+
+function log_install($msg)
+{
+    file_put_contents(LOG_FILE, '[' . date('Y-m-d H:i:s') . '] ' . $msg . PHP_EOL, FILE_APPEND);
 }
 
 function check_php_extensions($required = []) {
@@ -53,20 +101,45 @@ function write_env_file($data) {
 }
 
 function import_sql($mysqli, $file) {
-    $sql = file_get_contents($file);
-    // 只为没有 IF NOT EXISTS 的 CREATE TABLE 添加 IF NOT EXISTS
-    $sql = preg_replace_callback(
-        '/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/i',
-        function($matches) {
-            return 'CREATE TABLE IF NOT EXISTS ';
-        },
-        $sql
-    );
-    // 将所有 CREATE VIEW 替换为 CREATE OR REPLACE VIEW，避免视图已存在报错
-    $sql = preg_replace('/CREATE\s+VIEW\s+/i', 'CREATE OR REPLACE VIEW ', $sql);
-    $queries = array_filter(array_map('trim', explode(';', $sql)));
-    foreach ($queries as $query) {
-        if ($query) $mysqli->query($query);
+    try {
+        $mysqli->autocommit(false); // 开启事务
+        
+        $sql = file_get_contents($file);
+        if ($sql === false) {
+            throw new Exception("无法读取SQL文件: $file");
+        }
+
+        // 预处理SQL语句
+        $sql = preg_replace_callback(
+            '/CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)/i',
+            function($matches) {
+                return 'CREATE TABLE IF NOT EXISTS ';
+            },
+            $sql
+        );
+        $sql = preg_replace('/CREATE\s+VIEW\s+/i', 'CREATE OR REPLACE VIEW ', $sql);
+        
+        $queries = array_filter(array_map('trim', explode(';', $sql)));
+        $successCount = 0;
+        
+        foreach ($queries as $query) {
+            if (empty($query)) continue;
+            
+            if (!$mysqli->query($query)) {
+                throw new Exception("SQL执行失败: {$mysqli->error}\nSQL: {$query}");
+            }
+            $successCount++;
+        }
+        
+        $mysqli->commit();
+        log_install("成功执行 {$successCount} 条SQL语句");
+        return true;
+    } catch (Exception $e) {
+        $mysqli->rollback();
+        log_install("SQL导入失败: " . $e->getMessage());
+        throw $e;
+    } finally {
+        $mysqli->autocommit(true);
     }
 }
 
@@ -317,9 +390,12 @@ function render_form($error = '', $success = '', $defaults = []) {
 
                 // 提交安装请求
                 var formData = new FormData(installForm);
-                fetch('install_process.php', {
+                fetch('', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
                 })
                 .then(resp => resp.json())
                 .then(data => {
@@ -356,9 +432,17 @@ function render_form($error = '', $success = '', $defaults = []) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // 检测AJAX请求
+    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+              strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+    
     $required = ['DB_HOST','DB_PORT','DB_DATABASE','DB_USERNAME','APP_URL','ADMIN_EMAIL','ADMIN_PASSWORD'];
     foreach ($required as $k) {
         if (empty($_POST[$k])) {
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                die(json_encode(['success' => false, 'error' => '请填写所有必填项']));
+            }
             render_form('请填写所有必填项', '', $_POST);
             exit;
         }
@@ -400,9 +484,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         render_form('数据库连接失败: '.$mysqli->connect_error, '', $_POST);
         exit;
     }
-    // 创建数据库
-    $mysqli->query("CREATE DATABASE IF NOT EXISTS `$db_name` DEFAULT CHARACTER SET utf8mb4");
-    $mysqli->select_db($db_name);
+    
+    // 检查数据库是否存在及可访问
+    if (!$mysqli->query("CREATE DATABASE IF NOT EXISTS `$db_name` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")) {
+        render_form('数据库创建失败: '.$mysqli->error, '', $_POST);
+        exit;
+    }
+    
+    if (!$mysqli->select_db($db_name)) {
+        render_form('无法选择数据库: '.$mysqli->error, '', $_POST);
+        exit;
+    }
+    
+    // 验证表权限
+    if (!$mysqli->query("CREATE TABLE IF NOT EXISTS __install_test (id INT)")) {
+        render_form('数据库表创建权限不足: '.$mysqli->error, '', $_POST);
+        exit;
+    }
+    $mysqli->query("DROP TABLE IF EXISTS __install_test");
 
     // 导入SQL
     if (!file_exists(SQL_FILE)) {

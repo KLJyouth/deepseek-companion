@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 namespace Libs;
 
-require_once __DIR__ . '/CryptoHelper.php';
-use Libs\CryptoHelper;
-use \Exception;
-use \Throwable;
+use Exception;
+use Throwable;
+use mysqli;
+use Services\ConnectionPoolMonitor;
 
 /**
  * 安全数据库操作类
@@ -14,19 +14,23 @@ use \Throwable;
 final class DatabaseHelper {
     private static ?self $instance = null;
     private string $tablePrefix;
-    private \mysqli $conn;
+    private mysqli $connection;
     private $connectionPool = [];
     private $masterConn;
     private $slaveConns = [];
     private $maxConnections = 10;
+    private ?LogHelper $logger = null;
+    private string $currentXid;
+    private ModelPerformanceMonitor $monitor;
 
-    public function __construct($conn = null, $prefix = '') {
-        $this->conn = $conn ?: (isset($GLOBALS['conn']) ? $GLOBALS['conn'] : null);
+    private function __construct(string $prefix = '') {
         $this->prefix = $prefix;
+        $this->logger = LogHelper::getInstance();
+        $this->connection = $this->createConnection();
     }
 
     private function validateConnection() {
-        if (!$this->conn || !$this->conn->ping()) {
+        if (!$this->connection) {
             throw new DatabaseException("Database connection lost");
         }
     }
@@ -63,25 +67,25 @@ BEGIN
     COMMIT;
 END
 SQL;
-        $this->conn->query($procedureSQL);
+        $this->connection->query($procedureSQL);
     }
 
     // 版本回滚功能
     public function versionRollback($version) {
-        $this->conn->autocommit(FALSE);
+        $this->connection->autocommit(FALSE);
         try {
-            $this->conn->query("SELECT * FROM schema_versions WHERE version = '$version' FOR UPDATE");
-            $this->conn->query("LOAD DATA INFILE 'backup_$version.sql' INTO TABLE schema_versions");
-            $this->conn->commit();
+            $this->connection->query("SELECT * FROM schema_versions WHERE version = '$version' FOR UPDATE");
+            $this->connection->query("LOAD DATA INFILE 'backup_$version.sql' INTO TABLE schema_versions");
+            $this->connection->commit();
         } catch (Exception $e) {
-            $this->conn->rollback();
+            $this->connection->rollback();
             throw new \Exception("版本回滚失败: ".$e->getMessage());
         }
     }
 
     // 执行修复操作
     public function executeRepair($level) {
-        $this->conn->query("CALL ac_self_healing_level$level()");
+        $this->connection->query("CALL ac_self_healing_level$level()");
         error_log('数据库修复: ' . json_encode(['level' => $level, 'status' => 'completed']));
     }
     
@@ -89,9 +93,9 @@ SQL;
      * 新增深度修复方法
      */
     public function deepRepair($strategy = 'adaptive') {
-        $this->conn->query("SET GLOBAL innodb_force_recovery = 6");
+        $this->connection->query("SET GLOBAL innodb_force_recovery = 6");
         $this->executeRepair(3);
-        $this->conn->query("ANALYZE TABLE ac_critical_tables");
+        $this->connection->query("ANALYZE TABLE ac_critical_tables");
         error_log('执行L3级深度修复');
     }
 
@@ -100,9 +104,9 @@ SQL;
      */
     public function secureQuery($sql, $params = []) {
         try {
-            $stmt = $this->conn->prepare($sql);
+            $stmt = $this->connection->prepare($sql);
             if (!$stmt) {
-                throw new Exception("预处理失败: " . $this->conn->error);
+                throw new Exception("预处理失败: " . $this->connection->error);
             }
             
             if (!empty($params)) {
@@ -191,7 +195,7 @@ SQL;
                 VALUES (" . implode(',', $placeholders) . ")";
         
         $stmt = $this->secureQuery($sql, $params);
-        return $this->conn->insert_id;
+        return $this->connection->insert_id;
     }
     
     /**
@@ -395,7 +399,7 @@ SQL;
      */
     public function testConnection() {
         try {
-            return $this->conn && $this->conn->ping();
+            return $this->connection;
         } catch (Exception $e) {
             return false;
         }
@@ -414,42 +418,58 @@ SQL;
         return $stmt->affected_rows;
     }
 
-    public function beginTransaction(): bool
+    public function beginTransaction(): bool 
     {
-        $this->logger->info('Begin transaction');
-        return $this->connection->begin_transaction();
+        try {
+            $this->logger->info("Starting transaction");
+            return $this->connection->begin_transaction();
+        } catch (Exception $e) {
+            $this->logger->error("Transaction start failed: " . $e->getMessage());
+            throw $e;
+        }
     }
 
-    public function commit(): bool 
+    public function commit(): bool
     {
-        $this->logger->info('Commit transaction');
-        return $this->connection->commit();
+        try {
+            $this->logger->info("Committing transaction");
+            return $this->connection->commit();
+        } catch (Exception $e) {
+            $this->logger->error("Commit failed: " . $e->getMessage());
+            throw $e;
+        }
     }
 
     public function rollback(): bool
     {
-        $this->logger->info('Rollback transaction');
-        return $this->connection->rollback();
+        try {
+            $this->logger->info("Rolling back transaction");
+            return $this->connection->rollback();
+        } catch (Exception $e) {
+            $this->logger->error("Rollback failed: " . $e->getMessage());
+            throw $e;
+        }
     }
 
-    public function transaction(callable $callback)
+    public function transaction(callable $callback): mixed
     {
         try {
             $this->beginTransaction();
-            $result = $callback($this);
+            $result = $callback($this->connection);
             $this->commit();
             return $result;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->rollback();
+            $this->logger->error("Transaction failed: " . $e->getMessage());
             throw $e;
         }
     }
 
     public function query($sql, $params = []) {
         try {
-            $stmt = $this->conn->prepare($sql);
+            $stmt = $this->connection->prepare($sql);
             if (!$stmt) {
-                throw new \Exception("SQL预处理失败: " . $this->conn->error);
+                throw new \Exception("SQL预处理失败: " . $this->connection->error);
             }
 
             if (!empty($params)) {
@@ -757,6 +777,48 @@ SQL;
             return TransactionManager::rollback($this->currentXid);
         }
         return false;
+    }
+
+    private function createConnection(): mysqli
+    {
+        $config = [
+            'host' => DB_HOST,
+            'user' => DB_USER,
+            'pass' => DB_PASS,
+            'name' => DB_NAME
+        ];
+
+        $connection = new mysqli(
+            $config['host'],
+            $config['user'], 
+            $config['pass'],
+            $config['name']
+        );
+
+        if ($connection->connect_error) {
+            throw new Exception("Database connection failed: " . $connection->connect_error);
+        }
+
+        $connection->set_charset('utf8mb4');
+        return $connection;
+    }
+
+    public function logError(string $message): void
+    {
+        $this->logger->error($message);
+    }
+
+    public function getSlaveConnection()
+    {
+        // Placeholder for slave connection logic
+        return $this->createConnection();
+    }
+
+    public function __destruct()
+    {
+        if ($this->connection) {
+            $this->connection->close();
+        }
     }
 }
 
