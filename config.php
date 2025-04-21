@@ -63,18 +63,35 @@ foreach (REQUIRED_DIRS as $dir => $perms) {
 // ========== 加密配置 ==========
 require_once ROOT_PATH . '/libs/CryptoHelper.php';
 define('ENCRYPTION_METHOD', env('ENCRYPTION_METHOD', 'quantum'));
-define('ENCRYPTION_KEY', env('ENCRYPTION_KEY', bin2hex(random_bytes(16))));
-define('ENCRYPTION_IV', env('ENCRYPTION_IV', bin2hex(random_bytes(8))));
+if (!defined('ENCRYPTION_KEY')) {
+    $key = env('ENCRYPTION_KEY', bin2hex(random_bytes(16)));
+    if (strlen($key) !== 32) {
+        $key = bin2hex(random_bytes(16));
+    }
+    define('ENCRYPTION_KEY', $key);
+}
+if (strlen(ENCRYPTION_KEY) !== 32) {
+    throw new \RuntimeException('ENCRYPTION_KEY必须为32字节');
+}
+
+if (!defined('ENCRYPTION_IV')) {
+    define('ENCRYPTION_IV', env('ENCRYPTION_IV', bin2hex(random_bytes(6))));
+}
+if (strlen(ENCRYPTION_IV) !== 12) {
+    throw new \RuntimeException('ENCRYPTION_IV必须为12字节');
+}
 define('QUANTUM_KEY_ROTATION', env('QUANTUM_KEY_ROTATION', 3600));
 define('QUANTUM_MAX_KEY_VERSIONS', env('QUANTUM_MAX_KEY_VERSIONS', 3));
 try {
     $key = ENCRYPTION_KEY;
     $iv = ENCRYPTION_IV;
-    if (strlen($key) === 32 && (strlen($iv) === 12 || strlen($iv) === 16)) {
-        \Libs\CryptoHelper::init($key, $iv);
+    if (strlen($key) !== 32 || strlen($iv) !== 12) {
+        throw new \RuntimeException('加密密钥或IV长度不符合要求，密钥需要32字节，IV需要12字节');
     }
+    \Libs\CryptoHelper::init($key, $iv);
 } catch (\Throwable $e) {
     error_log('加密组件初始化失败: ' . $e->getMessage());
+    throw new \RuntimeException('加密组件初始化失败: ' . $e->getMessage());
 }
 
 // ========== JWT 配置 ==========

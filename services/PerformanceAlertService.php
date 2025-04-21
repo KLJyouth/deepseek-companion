@@ -1,15 +1,31 @@
 <?php
 namespace Services;
 
+use Redis;
+use RedisException;
+use LibsLogHelper;
+
 class PerformanceAlertService {
-    private $redis;
-    private $alertConfig;
-    private $logger;
+    private Redis $redis;
+    private array $alertConfig;
     
-    public function __construct() {
-        $this->redis = new \Redis();
-        $this->alertConfig = require __DIR__ . '/../config/alert_thresholds.php';
-        $this->logger = LogHelper::getInstance();
+    public function __construct(
+        private string $configPath = __DIR__ . '/../config/alert_thresholds.php',
+        private string $host = '127.0.0.1',
+        private int $port = 6379,
+        private float $timeout = 2.5
+    ) {
+        $this->redis = new Redis();
+        $this->alertConfig = require $configPath;
+        
+        try {
+            if (!$this->redis->connect($host, $port, $timeout)) {
+                throw new RedisException('Redis连接失败');
+            }
+        } catch (RedisException $e) {
+            LogHelper::getInstance()->error('Redis连接异常: ' . $e->getMessage());
+            throw $e;
+        }
     }
     
     public function checkPerformanceMetrics(array $metrics): void {

@@ -3,75 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 智能陪伴</title>
+    <title>DeepSeek 智慧法务系统</title>
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-        <div class="companion-model" id="companionModel"></div>
-        
-        <div class="chat-container">
-            <div class="chat-header">
-                <div class="header-top">
-                    <h1>AI 智能陪伴</h1>
-                    <button id="nameBtn" class="name-btn">
-                        <svg viewBox="0 0 24 24" width="20" height="20">
-                            <path fill="currentColor" d="M12 4a4 4 0 014 4 4 4 0 01-4 4 4 4 0 01-4-4 4 4 0 014-4m0 10c4.42 0 8 1.79 8 4v2H4v-2c0-2.21 3.58-4 8-4z"></path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="controls">
-                    <div class="control-group">
-                        <label>伴侣性别:</label>
-                        <div class="gender-selector">
-                            <button class="gender-btn active" data-gender="male">男</button>
-                            <button class="gender-btn" data-gender="female">女</button>
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <label>态度:</label>
-                        <input type="range" id="attitudeSlider" min="0" max="2" step="0.1" value="1">
-                        <span id="attitudeValue">中性</span>
-                    </div>
-                    <div class="control-group">
-                        <label>记忆功能:</label>
-                        <label class="switch">
-                            <input type="checkbox" id="memoryToggle" checked>
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="mood-indicator"></div>
+    <header class="main-header">
+        <nav class="nav-container">
+            <div class="logo">DeepSeek 智慧法务</div>
+            <div class="nav-links">
+                <a href="#services">法律服务</a>
+                <a href="#compliance">智能合规</a>
+                <a href="#risk">风险评估</a>
+                <a href="#law-firms">律所入驻</a>
+                <a href="login.php" class="login-btn">登录</a>
             </div>
-            
-            <div class="chat-messages" id="chatMessages"></div>
-            
-            <div class="chat-input">
-                <input type="text" id="messageInput" placeholder="和你的AI伴侣聊天...">
-                <button id="sendButton">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-                    </svg>
-                </button>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1>AI驱动的智慧法务解决方案</h1>
+                <p>融合人工智能与法律专业，为企业提供全方位的法务管理服务</p>
+                <div class="cta-buttons">
+                    <a href="#start" class="primary-btn">开始使用</a>
+                    <a href="#demo" class="secondary-btn">查看演示</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div id="globe"></div>
+            </div>
+        </section>
+
+        <section id="services" class="feature-section">
+            <h2>核心服务</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>合同智能管理</h3>
+                    <p>AI辅助合同审核、风险分析、自动化管理</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚖️</div>
+                    <h3>法律研究助手</h3>
+                    <p>智能检索法规、案例分析、法律咨询</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>合规风控</h3>
+                    <p>实时监控、风险预警、合规审查</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>数据分析</h3>
+                    <p>法务数据可视化、智能决策支持</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="law-firms" class="law-firm-section">
+            <h2>律所入驻</h2>
+            <div class="law-firm-content">
+                <div class="benefits">
+                    <h3>入驻优势</h3>
+                    <ul>
+                        <li>专属管理后台</li>
+                        <li>智能案件管理</li>
+                        <li>客户资源对接</li>
+                        <li>AI辅助办案</li>
+                    </ul>
+                </div>
+                <div class="join-form">
+                    <h3>快速入驻</h3>
+                    <form id="joinForm">
+                        <input type="text" placeholder="律所名称" required>
+                        <input type="email" placeholder="联系邮箱" required>
+                        <input type="tel" placeholder="联系电话" required>
+                        <button type="submit" class="primary-btn">申请入驻</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section id="stats" class="stats-section">
+            <div class="stat-card">
+                <h3>500+</h3>
+                <p>合作律所</p>
+            </div>
+            <div class="stat-card">
+                <h3>10000+</h3>
+                <p>服务企业</p>
+            </div>
+            <div class="stat-card">
+                <h3>99.9%</h3>
+                <p>准确率</p>
+            </div>
+            <div class="stat-card">
+                <h3>24/7</h3>
+                <p>智能服务</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="main-footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>关于我们</h4>
+                <p>DeepSeek智慧法务系统致力于为企业提供智能化法务解决方案</p>
+            </div>
+            <div class="footer-section">
+                <h4>联系方式</h4>
+                <p>邮箱：contact@deepseek.com</p>
+                <p>电话：400-888-8888</p>
+            </div>
+            <div class="footer-section">
+                <h4>快速链接</h4>
+                <a href="#">使用文档</a>
+                <a href="#">API接口</a>
+                <a href="#">技术支持</a>
             </div>
         </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="js/companion-model.js"></script>
-    <!-- 姓名设置对话框 -->
-    <div id="nameDialog" class="dialog-overlay">
-        <div class="dialog-content">
-            <h3>设置你的名字</h3>
-            <input type="text" id="nameInput" placeholder="输入你的名字">
-            <div class="dialog-buttons">
-                <button id="confirmName" class="dialog-btn primary">确认</button>
-                <button id="cancelName" class="dialog-btn">取消</button>
-            </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 DeepSeek 智慧法务系统. All rights reserved.</p>
         </div>
-    </div>
+    </footer>
 
-    <script src="js/chat.js"></script>
+    <script src="js/three.min.js"></script>
+    <script src="js/globe.js"></script>
 </body>
 </html>

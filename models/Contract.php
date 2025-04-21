@@ -9,13 +9,15 @@ class Contract extends BaseModel
 {
     use InputValidation;
 
-    protected static $table = 'contracts';
+    protected static string $table = 'contracts';
     
-    /** @var array 必填字段 */
-    protected $required = ['title', 'content', 'parties'];
+    /** @var array<string,string> 必填字段 */
+    protected array $required = ['title', 'content', 'parties'];
     
-    /** @var array 字段验证规则 */
-    protected $rules = [
+    /** 
+     * @var array<string,array<string,mixed>> 字段验证规则
+     */
+    protected array $rules = [
         'title' => ['type' => 'string', 'max' => 255],
         'content' => ['type' => 'string', 'min' => 10],
         'parties' => ['type' => 'array'],
@@ -24,8 +26,8 @@ class Contract extends BaseModel
 
     /**
      * 验证合同数据
-     * @param array $data
-     * @throws \InvalidArgumentException
+     * @param array<string,mixed> $data 合同数据
+     * @throws \InvalidArgumentException 当数据验证失败时
      */
     protected function validate(array $data): void
     {
@@ -35,19 +37,24 @@ class Contract extends BaseModel
 
     /**
      * 获取合同签名信息
-     * @return array
+     * @return array<int,array<string,mixed>> 签名信息数组
+     * @throws \RuntimeException 当查询失败时
      */
     public function signatures(): array
     {
+        if (!isset($this->attributes['id'])) {
+            throw new \RuntimeException('Contract ID is not set');
+        }
         return ContractSignature::findByContract($this->attributes['id']);
     }
 
     /**
      * 检查合同是否已过期
-     * @return bool
+     * @return bool 是否过期
      */
-    public function isExpired()
+    public function isExpired(): bool
     {
-        return strtotime($this->attributes['expire_at']) < time();
+        return isset($this->attributes['expire_at']) && 
+               strtotime($this->attributes['expire_at']) < time();
     }
 }

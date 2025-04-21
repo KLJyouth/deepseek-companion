@@ -12,100 +12,65 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI伴侣 - 智能陪伴系统</title>
+    <title>DeepSeek 智慧法务系统</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    <style>
-        .hero-section {
-            background: linear-gradient(135deg, #1e88e5, #0d47a1);
-            color: white;
-            padding: 5rem 0;
-            margin-bottom: 3rem;
-        }
-        .feature-card {
-            transition: transform 0.3s;
-            height: 100%;
-        }
-        .feature-card:hover {
-            transform: translateY(-5px);
-        }
-        .nav-pills .nav-link.active {
-            background-color: #1e88e5;
-        }
-        .quick-access {
-            background-color: #f8f9fa;
-            border-radius: 10px;
-            padding: 2rem;
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
-    <!-- 导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="bi bi-robot me-2"></i>AI伴侣
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#">首页</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="chat.php">智能聊天</a>
-                    </li>
-                    <?php if ($isLoggedIn && $role === 'admin'): ?>
-                    <li class="nav-item">
-                        <a class="nav-link" href="admin.php">系统管理</a>
-                    </li>
-                    <?php endif; ?>
-                </ul>
-                <div class="d-flex">
-                    <?php if ($isLoggedIn): ?>
-                        <div class="dropdown">
-                            <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
-                                <i class="bi bi-person-circle me-1"></i><?php echo htmlspecialchars($username); ?>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person me-2"></i>个人资料</a></li>
-                                <li><a class="dropdown-item" href="settings.php"><i class="bi bi-gear me-2"></i>设置</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="logout.php"><i class="bi bi-box-arrow-right me-2"></i>退出</a></li>
-                            </ul>
-                        </div>
-                    <?php else: ?>
-                        <a href="login.php" class="btn btn-primary">登录</a>
-                    <?php endif; ?>
-                </div>
+    <header class="main-header">
+        <nav class="nav-container">
+            <div class="logo">DeepSeek 智慧法务</div>
+            <div class="nav-links">
+                <a href="#services">法律服务</a>
+                <a href="#compliance">智能合规</a>
+                <a href="#risk">风险评估</a>
+                <a href="#law-firms">律所入驻</a>
+                <?php if ($isLoggedIn): ?>
+                    <div class="dropdown">
+                        <button class="btn btn-link dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i><?php echo htmlspecialchars($username); ?>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profile.php"><i class="bi bi-person"></i>个人资料</a></li>
+                            <li><a class="dropdown-item" href="chat.php"><i class="bi bi-chat"></i>智能助手</a></li>
+                            <?php if ($role === 'admin'): ?>
+                            <li><a class="dropdown-item" href="admin.php"><i class="bi bi-gear"></i>系统管理</a></li>
+                            <?php endif; ?>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="logout.php"><i class="bi bi-box-arrow-right"></i>退出</a></li>
+                        </ul>
+                    </div>
+                <?php else: ?>
+                    <a href="login.php" class="login-btn">登录</a>
+                <?php endif; ?>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </header>
 
-    <!-- 主展示区 -->
-    <section class="hero-section position-relative overflow-hidden">
-        <div id="globe-container" class="position-absolute w-100 h-100"></div>
-        <div class="container position-relative z-index-1">
-            <div class="row justify-content-center">
-                <div class="col-lg-8 text-center">
-                    <h1 class="display-3 fw-bold mb-4">您的智能AI伴侣</h1>
-                    <p class="lead mb-5">全天候陪伴，个性化交流，让科技温暖您的生活</p>
-                    <?php if (!$isLoggedIn): ?>
-                        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center">
-                            <a href="login.php" class="btn btn-primary btn-lg px-4 gap-3">立即体验</a>
-                            <a href="#features" class="btn btn-outline-light btn-lg px-4">了解更多</a>
-                        </div>
+    <main>
+        <section class="hero-section">
+            <div class="hero-content">
+                <h1>AI驱动的智慧法务解决方案</h1>
+                <p>融合人工智能与法律专业，为企业提供全方位的法务管理服务</p>
+                <div class="cta-buttons">
+                    <?php if ($isLoggedIn): ?>
+                        <a href="chat.php" class="primary-btn">智能助手</a>
+                        <a href="#services" class="secondary-btn">浏览服务</a>
                     <?php else: ?>
-                        <a href="chat.php" class="btn btn-light btn-lg px-4">开始聊天</a>
+                        <a href="login.php" class="primary-btn">开始使用</a>
+                        <a href="#demo" class="secondary-btn">查看演示</a>
                     <?php endif; ?>
                 </div>
             </div>
-        </div>
-    </section>
+            <div class="hero-visual">
+                <div id="globe" style="width: 100%; height: 500px; position: relative;"></div>
+            </div>
+        </section>
 
     <!-- 数据卡片 -->
     <section class="py-5 bg-dark bg-opacity-75 position-relative z-index-1">
@@ -148,167 +113,295 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
                     </div>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- 功能区域 -->
-    <div class="container">
-        <?php if ($isLoggedIn): ?>
-            <!-- 已登录用户快捷入口 -->
-            <div class="quick-access mb-5">
-                <h3 class="mb-4"><i class="bi bi-lightning me-2"></i>快捷入口</h3>
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <a href="chat.php" class="card feature-card text-decoration-none">
-                            <div class="card-body text-center">
-                                <i class="bi bi-chat-square-text text-primary" style="font-size: 2rem;"></i>
-                                <h5 class="card-title mt-3">智能聊天</h5>
-                                <p class="card-text">与您的AI伴侣交流</p>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-4">
-                        <a href="#" class="card feature-card text-decoration-none">
-                            <div class="card-body text-center">
-                                <i class="bi bi-collection text-primary" style="font-size: 2rem;"></i>
-                                <h5 class="card-title mt-3">对话记录</h5>
-                                <p class="card-text">查看历史对话</p>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col-md-4">
-                        <a href="settings.php" class="card feature-card text-decoration-none">
-                            <div class="card-body text-center">
-                                <i class="bi bi-sliders text-primary" style="font-size: 2rem;"></i>
-                                <h5 class="card-title mt-3">个性设置</h5>
-                                <p class="card-text">定制您的AI伴侣</p>
-                            </div>
-                        </a>
-                    </div>
-                </div>
+            <div class="stat-card">
+                <h3>24/7</h3>
+                <p>智能服务</p>
             </div>
-        <?php endif; ?>
+        </section>
 
-        <!-- 功能特点 -->
-        <section id="features" class="mb-5">
-            <h2 class="text-center mb-5">核心功能</h2>
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card feature-card">
-                        <div class="card-body">
-                            <i class="bi bi-chat-left-text text-primary" style="font-size: 2rem;"></i>
-                            <h5 class="card-title mt-3">智能对话</h5>
-                            <p class="card-text">基于先进AI模型的自然语言交互，提供流畅的对话体验。</p>
-                        </div>
-                    </div>
+        <section id="services" class="feature-section">
+            <h2>核心服务</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="bi bi-file-text"></i></div>
+                    <h3>合同智能管理</h3>
+                    <p>AI辅助合同审核、风险分析、自动化管理</p>
                 </div>
-                <div class="col-md-4">
-                    <div class="card feature-card">
-                        <div class="card-body">
-                            <i class="bi bi-person-bounding-box text-primary" style="font-size: 2rem;"></i>
-                            <h5 class="card-title mt-3">个性定制</h5>
-                            <p class="card-text">自定义AI伴侣的性别、性格和交互方式，打造专属体验。</p>
-                        </div>
-                    </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="bi bi-search"></i></div>
+                    <h3>法律研究助手</h3>
+                    <p>智能检索法规、案例分析、法律咨询</p>
                 </div>
-                <div class="col-md-4">
-                    <div class="card feature-card">
-                        <div class="card-body">
-                            <i class="bi bi-clock-history text-primary" style="font-size: 2rem;"></i>
-                            <h5 class="card-title mt-3">记忆功能</h5>
-                            <p class="card-text">AI会记住您的偏好和历史对话，提供连贯的交互体验。</p>
-                        </div>
-                    </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="bi bi-shield-check"></i></div>
+                    <h3>合规风控</h3>
+                    <p>实时监控、风险预警、合规审查</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="bi bi-graph-up"></i></div>
+                    <h3>数据分析</h3>
+                    <p>法务数据可视化、智能决策支持</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="bi bi-robot"></i></div>
+                    <h3>智能法律助手</h3>
+                    <p>24/7在线咨询、智能对话、个性化服务</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="bi bi-people"></i></div>
+                    <h3>律所协作</h3>
+                    <p>律所资源对接、案件分配、协同办公</p>
                 </div>
             </div>
         </section>
-    </div>
 
-    <!-- 页脚 -->
-    <footer class="bg-dark text-white py-4">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5><i class="bi bi-robot me-2"></i>AI伴侣</h5>
-                    <p class="text-muted">用科技温暖生活，让AI成为您的贴心伙伴。</p>
-                </div>
-                <div class="col-md-3">
-                    <h5>快速链接</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="#" class="text-decoration-none text-muted">首页</a></li>
-                        <li><a href="chat.php" class="text-decoration-none text-muted">智能聊天</a></li>
-                        <li><a href="#" class="text-decoration-none text-muted">关于我们</a></li>
+        <section id="law-firms" class="law-firm-section">
+            <h2>律所入驻</h2>
+            <div class="law-firm-content">
+                <div class="benefits">
+                    <h3>入驻优势</h3>
+                    <ul>
+                        <li><i class="bi bi-check-circle"></i>专属管理后台</li>
+                        <li><i class="bi bi-check-circle"></i>智能案件管理</li>
+                        <li><i class="bi bi-check-circle"></i>客户资源对接</li>
+                        <li><i class="bi bi-check-circle"></i>AI辅助办案</li>
                     </ul>
                 </div>
-                <div class="col-md-3">
-                    <h5>联系我们</h5>
-                    <ul class="list-unstyled">
-                        <li><i class="bi bi-envelope me-2 text-muted"></i><span class="text-muted">contact@aicompanion.com</span></li>
-                        <li><i class="bi bi-telephone me-2 text-muted"></i><span class="text-muted">400-123-4567</span></li>
-                    </ul>
+                <div class="join-form">
+                    <h3>快速入驻</h3>
+                    <form id="joinForm" action="process_join.php" method="POST">
+                        <input type="text" name="firm_name" placeholder="律所名称" required>
+                        <input type="email" name="email" placeholder="联系邮箱" required>
+                        <input type="tel" name="phone" placeholder="联系电话" required>
+                        <button type="submit" class="primary-btn">申请入驻</button>
+                    </form>
                 </div>
             </div>
-            <hr class="my-4">
-            <div class="text-center text-muted">
-                <small>© <?php echo date('Y'); ?> AI伴侣 版权所有</small>
+        </section>
+    </main>
+
+    <footer class="main-footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>关于我们</h4>
+                <p>DeepSeek智慧法务系统致力于为企业提供智能化法务解决方案</p>
             </div>
+            <div class="footer-section">
+                <h4>联系方式</h4>
+                <p><i class="bi bi-envelope"></i>邮箱：contact@deepseek.com</p>
+                <p><i class="bi bi-telephone"></i>电话：400-888-8888</p>
+            </div>
+            <div class="footer-section">
+                <h4>快速链接</h4>
+                <a href="#"><i class="bi bi-file-text"></i>使用文档</a>
+                <a href="#"><i class="bi bi-code-square"></i>API接口</a>
+                <a href="#"><i class="bi bi-headset"></i>技术支持</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; <?php echo date('Y'); ?> DeepSeek 智慧法务系统. All rights reserved.</p>
         </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
-    <?php if ($isLoggedIn): ?>
-    <!-- 聊天功能容器 -->
-    <div class="app-container mt-5">
-        <div class="companion-model" id="companionModel"></div>
+    <script src="js/globe-enhanced.js"></script>
+    <script>
+    // 更新数据卡片的动态效果
+    function updateStats() {
+        // 模拟实时数据更新
+        const userCount = document.getElementById('user-count');
+        const requestCount = document.getElementById('request-count');
+        const nodeCount = document.getElementById('node-count');
         
-        <div class="chat-container">
-            <div class="chat-header">
-                <div class="header-top">
-                    <h2>与AI伴侣聊天</h2>
-                </div>
-                <div class="controls">
-                    <div class="control-group">
-                        <label>伴侣性别:</label>
-                        <div class="gender-selector">
-                            <button class="gender-btn active" data-gender="male">男</button>
-                            <button class="gender-btn" data-gender="female">女</button>
-                        </div>
-                    </div>
-                    <div class="control-group">
-                        <label>态度:</label>
-                        <input type="range" id="attitudeSlider" min="0" max="2" step="0.1" value="1">
-                        <span id="attitudeValue">中性</span>
-                    </div>
-                    <div class="control-group">
-                        <label>记忆功能:</label>
-                        <label class="switch">
-                            <input type="checkbox" id="memoryToggle" checked>
-                            <span class="slider round"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
+        // 添加数字增长动画
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+    
+        // 定期更新数据
+        setInterval(() => {
+            // 模拟用户数增长
+            const currentUsers = parseInt(userCount.innerHTML) || 0;
+            animateValue(userCount, currentUsers, currentUsers + Math.floor(Math.random() * 10), 1000);
             
-            <div class="chat-messages" id="chatMessages"></div>
+            // 模拟请求数波动
+            requestCount.innerHTML = Math.floor(Math.random() * 100 + 200);
+        }, 3000);
+    }
+    
+    // 添加区块链数据流转效果
+    function initBlockchainFlow() {
+        const canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '0';
+        document.querySelector('.stat-card').appendChild(canvas);
+    
+        const ctx = canvas.getContext('2d');
+        const particles = [];
+    
+        function Particle(x, y) {
+            this.x = x;
+            this.y = y;
+            this.speed = Math.random() * 2 + 1;
+            this.size = Math.random() * 3 + 2;
+        }
+    
+        function createParticles() {
+            const particle = new Particle(
+                Math.random() * canvas.width,
+                Math.random() * canvas.height
+            );
+            particles.push(particle);
+        }
+    
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            <div class="chat-input">
-                <input type="text" id="messageInput" placeholder="和你的AI伴侣聊天...">
-                <button id="sendButton">
-                    <svg viewBox="0 0 24 24" width="24" height="24">
-                        <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
+            particles.forEach((particle, index) => {
+                particle.x += particle.speed;
+                
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(64, 196, 255, 0.5)';
+                ctx.fill();
+                
+                if (particle.x > canvas.width) {
+                    particles.splice(index, 1);
+                }
+            });
+            
+            if (particles.length < 20) {
+                createParticles();
+            }
+            
+            requestAnimationFrame(animate);
+        }
+    
+        animate();
+    }    
+    function initCharts() {
+         // 节点分布图表
+         const nodeCtx = document.getElementById('nodeChart').getContext('2d');
+         new Chart(nodeCtx, {
+             type: 'line',
+             data: {
+                 labels: ['亚洲', '欧洲', '北美', '南美', '非洲'],
+                 datasets: [{
+                     data: [5, 3, 2, 1, 1],
+                     borderColor: 'rgba(13, 110, 253, 0.8)',
+                     borderWidth: 2,
+                     fill: false,
+                     tension: 0.4
+                 }]
+             },
+             options: {
+                 plugins: { legend: { display: false } },
+                 scales: { x: { display: false }, y: { display: false } }
+             }
+         });
 
-    <!-- 加载必要的JS -->
-    <script src="js/companion-model.js"></script>
-    <script src="js/chat.js"></script>
-    <?php endif; ?>
+         // 请求量图表
+         const requestCtx = document.getElementById('requestChart').getContext('2d');
+         const requestData = Array(10).fill(0).map(() => Math.floor(Math.random() * 100 + 150));
+         const requestChart = new Chart(requestCtx, {
+             type: 'line',
+             data: {
+                 labels: Array(10).fill(''),
+                 datasets: [{
+                     data: requestData,
+                     borderColor: 'rgba(13, 202, 240, 0.8)',
+                     borderWidth: 2,
+                     fill: false,
+                     tension: 0.4
+                 }]
+             },
+             options: {
+                 plugins: { legend: { display: false } },
+                 scales: { x: { display: false }, y: { display: false } }
+             }
+         });
 
-    <script src="js/main.js"></script>
-</body>
-</html>
+         // AI案件分析图表
+         const caseCtx = document.getElementById('caseAnalysisChart').getContext('2d');
+         new Chart(caseCtx, {
+             type: 'radar',
+             data: {
+                 labels: ['合同审核', '知识产权', '劳动争议', '商事纠纷', '合规风险'],
+                 datasets: [{
+                     label: 'AI处理能力',
+                     data: [95, 88, 92, 85, 90],
+                     backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                     borderColor: 'rgba(13, 110, 253, 0.8)',
+                     borderWidth: 2
+                 }]
+             },
+             options: {
+                 scales: {
+                     r: {
+                         beginAtZero: true,
+                         max: 100,
+                         ticks: { display: false }
+                     }
+                 }
+             }
+         });
+
+         // 智能合规评分图表
+         const complianceCtx = document.getElementById('complianceChart').getContext('2d');
+         new Chart(complianceCtx, {
+             type: 'doughnut',
+             data: {
+                 labels: ['已完成', '待优化'],
+                 datasets: [{
+                     data: [95, 5],
+                     backgroundColor: [
+                         'rgba(25, 135, 84, 0.8)',
+                         'rgba(173, 181, 189, 0.2)'
+                     ],
+                     borderWidth: 0
+                 }]
+             },
+             options: {
+                 cutout: '80%',
+                 plugins: { legend: { display: false } }
+             }
+         });
+
+         // 更新运行时间指示器
+         const uptimeIndicator = document.getElementById('uptimeIndicator');
+         uptimeIndicator.innerHTML = Array(10).fill('<span class="dot"></span>').join('');
+         document.querySelectorAll('.dot').forEach(dot => {
+             dot.style.cssText = `
+                 display: inline-block;
+                 width: 8px;
+                 height: 8px;
+                 border-radius: 50%;
+                 background-color: rgba(25, 135, 84, 0.8);
+                 margin: 0 2px;
+             `;
+         });
+     }
+
+     // 初始化所有动态效果
+     document.addEventListener('DOMContentLoaded', function() {
+         updateStats();
+         initBlockchainFlow();
+         initCharts();
+     });
+     </script>
+  </body>
+  </html>

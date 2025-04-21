@@ -1,19 +1,24 @@
 <?php
+declare(strict_types=1);
+
 namespace Libs;
 
 require_once __DIR__ . '/../libs/CryptoHelper.php';
-use \Exception;
+require_once __DIR__ . '/../libs/DatabaseHelper.php';
+
+use Exception;
+use Libs\DatabaseHelper;
+use Libs\CryptoHelper;
 
 /**
  * 认证中间件
  * 处理用户认证和权限检查
  */
 class AuthMiddleware {
-    private $dbHelper;
-    
-    public function __construct($dbHelper) {
-        $this->dbHelper = $dbHelper;
-    }
+    public function __construct(
+        private DatabaseHelper $dbHelper
+    ) {}
+
 
     /**
      * 静态方法检查登录状态
@@ -23,7 +28,7 @@ class AuthMiddleware {
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
-        return !empty($_SESSION['user_id']);
+        return isset($_SESSION['user_id']) && $_SESSION['user_id'] !== null;
     }
 
     /**
@@ -31,7 +36,7 @@ class AuthMiddleware {
      * 包含会话安全配置和验证
      */
     public static function secureSession(): void {
-        ini_set('session.cookie_httponly', 1);
+        ini_set('session.cookie_httponly', '1');
         ini_set('session.cookie_secure', 1);
         ini_set('session.use_strict_mode', 1);
         ini_set('session.cookie_samesite', 'Strict');

@@ -11,6 +11,7 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 require_once __DIR__ . '/libs/CryptoHelper.php';
 require_once __DIR__ . '/libs/ConfigHelper.php';
 require_once __DIR__ . '/libs/DatabaseHelper.php';
+require_once __DIR__ . '/models/BaseModel.php';
 require_once __DIR__ . '/libs/SecurityManager.php';
 require_once __DIR__ . '/libs/SecurityPredictor.php';
 require_once __DIR__ . '/libs/SecurityAuditHelper.php'; 

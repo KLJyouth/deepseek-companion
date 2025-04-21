@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧法务系统 - 人工智能赋能法律服务</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- 引入现代UI框架，如Element UI或Ant Design -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入字体图标 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <img src="images/logo.png" alt="智慧法务系统">
+                <h1>智慧法务系统</h1>
+            </div>
+            <nav class="nav">
+                <ul>
+                    <li><a href="#home" class="active">首页</a></li>
+                    <li><a href="#features">核心功能</a></li>
+                    <li><a href="#solutions">解决方案</a></li>
+                    <li><a href="#cases">案例展示</a></li>
+                    <li><a href="#about">关于我们</a></li>
+                    <li><a href="#contact">联系我们</a></li>
+                </ul>
+            </nav>
+            <div class="login-area">
+                <a href="login.html" class="btn btn-login">登录</a>
+                <a href="register.html" class="btn btn-register">注册</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主横幅区域 -->
+    <section class="hero" id="home">
+        <div class="container">
+            <div class="hero-content">
+                <h2>人工智能赋能法律服务</h2>
+                <p>基于大数据和人工智能技术，为企业和法务人员提供智能化、高效率、全方位的法律服务解决方案</p>
+                <div class="hero-buttons">
+                    <a href="#demo" class="btn btn-primary">免费体验</a>
+                    <a href="#learn" class="btn btn-secondary">了解更多</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img src="images/hero-image.png" alt="智慧法务系统展示">
+            </div>
+        </div>
+    </section>
+
+    <!-- 核心功能区域 -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">核心功能</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-search-plus"></i></div>
+                    <h3>智能检索</h3>
+                    <p>快速检索法律法规与判例，提供精准参考依据</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-file-contract"></i></div>
+                    <h3>合同管理</h3>
+                    <p>自动化分析合同内容，高效完成审查、修改和管理</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3>风险评估</h3>
+                    <p>多维度分析企业潜在法律风险，提供防范建议</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-balance-scale"></i></div>
+                    <h3>合规审查</h3>
+                    <p>跟踪法规变化，识别企业潜在法律风险</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-file-alt"></i></div>
+                    <h3>文书起草</h3>
+                    <p>辅助起草、审核、校对法律文书，确保格式正确</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                    <h3>智能辅助审判</h3>
+                    <p>分析案件相关信息，为法官提供全面的案件背景</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 解决方案区域 -->
+    <section class="solutions" id="solutions">
+        <div class="container">
+            <h2 class="section-title">解决方案</h2>
+            <div class="solution-tabs">
+                <div class="tab-nav">
+                    <button class="tab-btn active" data-target="enterprise">企业法务解决方案</button>
+                    <button class="tab-btn" data-target="government">政府法务解决方案</button>
+                    <button class="tab-btn" data-target="lawfirm">律师事务所解决方案</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active" id="enterprise">
+                        <div class="solution-content">
+                            <div class="solution-image">
+                                <img src="images/enterprise-solution.png" alt="企业法务解决方案">
+                            </div>
+                            <div class="solution-text">
+                                <h3>企业法务解决方案</h3>
+                                <p>为企业提供全面的法务管理系统，包括合同管理、风险评估、合规审查等功能，帮助企业降低法律风险，提高法务工作效率。</p>
+                                <ul>
+                                    <li>智能合同管理与审核</li>
+                                    <li>企业合规风险评估</li>
+                                    <li>法律知识库定制</li>
+                                    <li>诉讼案件智能分析</li>
+                                </ul>
+                                <a href="solutions/enterprise.html" class="btn btn-outline">了解详情</a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 其他解决方案内容类似 -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 数据展示区域 -->
+    <section class="stats">
+        <div class="container">
+            <div class="stat-item">
+                <div class="stat-number">2亿+</div>
+                <div class="stat-label">企业数据</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">1亿+</div>
+                <div class="stat-label">司法诉讼案件</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">6千万+</div>
+                <div class="stat-label">地址数据</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">2千万+</div>
+                <div class="stat-label">企业人物数据</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 案例展示区域 -->
+    <section class="cases" id="cases">
+        <div class="container">
+            <h2 class="section-title">成功案例</h2>
+            <div class="case-slider">
+                <!-- 案例卡片 -->
+                <div class="case-card">
+                    <div class="case-image">
+                        <img src="images/case1.jpg" alt="案例1">
+                    </div>
+                    <div class="case-content">
+                        <h3>某大型国企合规体系建设</h3>
+                        <p>通过智能合规系统，帮助客户建立完善的合规管理体系，实现内外规融合联动，自动生成合规义务及责任清单。</p>
+                        <a href="cases/case1.html" class="btn btn-text">查看详情 <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+                <!-- 更多案例卡片 -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 体验演示区域 -->
+    <section class="demo" id="demo">
+        <div class="container">
+            <h2 class="section-title">在线体验</h2>
+            <div class="demo-container">
+                <div class="demo-tabs">
+                    <button class="demo-tab active" data-target="contract">合同审核</button>
+                    <button class="demo-tab" data-target="risk">风险评估</button>
+                    <button class="demo-tab" data-target="search">法规检索</button>
+                </div>
+                <div class="demo-content">
+                    <div class="demo-panel active" id="contract-demo">
+                        <div class="demo-interface">
+                            <div class="demo-input">
+                                <h3>合同智能审核</h3>
+                                <p>上传合同或输入合同条款，系统将自动分析风险点并提供修改建议</p>
+                                <textarea placeholder="请输入合同条款..."></textarea>
+                                <div class="upload-area">
+                                    <button class="btn btn-upload"><i class="fas fa-upload"></i> 上传合同文件</button>
+                                </div>
+                                <button class="btn btn-primary">开始分析</button>
+                            </div>
+                            <div class="demo-output">
+                                <h3>分析结果</h3>
+                                <div class="result-placeholder">
+                                    <p>分析结果将在这里显示</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 其他演示面板 -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 关于我们区域 -->
+    <section class="about" id="about">
+        <div class="container">
+            <h2 class="section-title">关于我们</h2>
+            <div class="about-content">
+                <div class="about-text">
+                    <p>我们是专注于法律科技领域的创新团队，致力于将人工智能、大数据等前沿技术与法律服务深度融合，为企业和法务人员提供智能化、高效率、全方位的法律服务解决方案。</p>
+                    <p>团队由法律专家、人工智能工程师、数据科学家等多领域专业人才组成，拥有丰富的行业经验和技术积累。</p>
+                    <div class="about-values">
+                        <div class="value-item">
+                            <h3>使命</h3>
+                            <p>用科技赋能法律，让法律服务更加普惠均等、优质高效</p>
+                        </div>
+                        <div class="value-item">
+                            <h3>愿景</h3>
+                            <p>成为法律科技领域的领导者，推动法律服务的智能化变革</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="about-image">
+                    <img src="images/about-us.jpg" alt="关于我们">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 联系我们区域 -->
+    <section class="contact" id="contact">
+        <div class="container">
+            <h2 class="section-title">联系我们</h2>
+            <div class="contact-content">
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <h3>地址</h3>
+                            <p>广西南宁市青秀区民族大道157号财富国际广场</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-phone-alt"></i>
+                        <div>
+                            <h3>电话</h3>
+                            <p>400-123-4567</p>
+                        </div>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <div>
+                            <h3>邮箱</h3>
+                            <p>contact@smartlegal.com</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="contact-form">
+                    <form>
+                        <div class="form-group">
+                            <label for="name">姓名</label>
+                            <input type="text" id="name" placeholder="请输入您的姓名">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">邮箱</label>
+                            <input type="email" id="email" placeholder="请输入您的邮箱">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">电话</label>
+                            <input type="tel" id="phone" placeholder="请输入您的电话">
+                        </div>
+                        <div class="form-group">
+                            <label for="message">留言</label>
+                            <textarea id="message" placeholder="请输入您的留言"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">提交</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <img src="images/logo-white.png" alt="智慧法务系统">
+                    <p>人工智能赋能法律服务</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-link-group">
+                        <h3>产品</h3>
+                        <ul>
+                            <li><a href="#">智慧法务</a></li>
+                            <li><a href="#">智能合规</a></li>
+                            <li><a href="#">风险透镜</a></li>
+                            <li><a href="#">智慧风控</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-link-group">
+                        <h3>解决方案</h3>
+                        <ul>
+                            <li><a href="#">企业法务</a></li>
+                            <li><a href="#">政府法务</a></li>
+                            <li><a href="#">律师事务所</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-link-group">
+                        <h3>资源</h3>
+                        <ul>
+                            <li><a href="#">知识库</a></li>
+                            <li><a href="#">博客</a></li>
+                            <li><a href="#">案例研究</a></li>
+                            <li><a href="#">帮助中心</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <div class="copyright">
+                    <p>&copy; 2023 智慧法务系统. 保留所有权利.</p>
+                </div>
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-weixin"></i></a>
+                    <a href="#"><i class="fab fa-weibo"></i></a>
+                    <a href="#"><i class="fab fa-linkedin"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

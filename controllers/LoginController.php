@@ -1,10 +1,13 @@
 <?php
+declare(strict_types=1);
+
 namespace Controllers;
 
 require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
 require_once __DIR__ . '/../libs/CryptoHelper.php';
 require_once __DIR__ . '/../libs/DatabaseHelper.php';
 require_once __DIR__ . '/../libs/RateLimiter.php';
+require_once __DIR__ . '/../services/DeviceManagementService.php';
 
 use Libs\AuthMiddleware;
 use Libs\CryptoHelper;
@@ -16,13 +19,15 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 class LoginController {
-    private $dbHelper;
-    private $auth;
-    private $rateLimiter;
-    private $deviceService;
+    private const MAX_LOGIN_ATTEMPTS = 5;
+    private const LOGIN_LOCKOUT_TIME = 1800; // 30分钟
     
-    const MAX_LOGIN_ATTEMPTS = 5;
-    const LOGIN_LOCKOUT_TIME = 1800; // 30分钟
+    public function __construct(
+        private DatabaseHelper $dbHelper,
+        private ?AuthMiddleware $auth = null,
+        private ?RateLimiter $rateLimiter = null,
+        private ?DeviceManagementService $deviceService = null
+    )
 
     public function __construct(DatabaseHelper $dbHelper) {
         // 验证数据库连接
@@ -35,9 +40,6 @@ class LoginController {
             throw new Exception("数据库连接异常: " . $e->getMessage());
         }
         
-        $this->dbHelper = $dbHelper;
-        $this->deviceService = new DeviceManagementService($dbHelper);
-        
         // 初始化加密功能
         try {
             CryptoHelper::init(ENCRYPTION_KEY, ENCRYPTION_IV);
@@ -48,7 +50,8 @@ class LoginController {
             throw new Exception("加密初始化失败: " . $e->getMessage());
         }
         
-        // 初始化认证组件
+        // 初始化组件
+        $this->deviceService = new DeviceManagementService($dbHelper);
         $this->auth = new AuthMiddleware($dbHelper);
         $this->rateLimiter = new RateLimiter($dbHelper, self::MAX_LOGIN_ATTEMPTS, self::LOGIN_LOCKOUT_TIME);
         
@@ -59,9 +62,13 @@ class LoginController {
         ]);
     }
     
+    /**
+     * 用户登录处理
+     * @throws Exception 当登录验证失败时抛出异常
+     */
     public function login(string $username, string $password, bool $remember = false, ?string $totpCode = null): array {
         // 验证CSRF令牌
-        $csrfToken = $_POST['csrf_token'] ?? '';
+        $csrfToken = filter_input(INPUT_POST, 'csrf_token') ?? '';
         if (!CryptoHelper::validateCsrfToken($csrfToken)) {
             $this->logFailedAttempt($username, 'invalid_csrf');
             error_log("CSRF令牌验证失败: 用户名={$username}, IP=" . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
@@ -69,7 +76,7 @@ class LoginController {
         }
 
         // 设备指纹验证
-        $deviceFingerprint = $this->deviceService->generateDeviceFingerprint();
+        $deviceFingerprint = $this->deviceService?->generateDeviceFingerprint() ?? '';
         if (!$this->deviceService->validateDeviceFingerprint($username, $deviceFingerprint)) {
             $this->deviceService->sendUnknownDeviceAlert($username);
             error_log("设备指纹验证失败: 用户名={$username}, 指纹={$deviceFingerprint}");
@@ -77,8 +84,8 @@ class LoginController {
         }
 
         // 地理位置异常检测
-        $location = $this->deviceService->getLocationFromIP($_SERVER['REMOTE_ADDR']);
-        if ($this->deviceService->isLocationSuspicious($username, $location)) {
+        $location = $this->deviceService?->getLocationFromIP(filter_input(INPUT_SERVER, 'REMOTE_ADDR') ?? '') ?? [];
+        if ($this->deviceService?->isLocationSuspicious($username, $location) ?? false) {
             $this->logFailedAttempt($username, 'suspicious_location');
             error_log("地理位置异常检测失败: 用户名={$username}, 位置=" . json_encode($location));
             throw new Exception("检测到异常登录地点，请联系管理员");

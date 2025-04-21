@@ -1,18 +1,35 @@
 <?php
 namespace Services;
 
+use Libs\LogHelper;
+use RedisException;
+
 class AlertService {
-    private $redis;
-    private $thresholds = [
-        'connection_wait' => 200,    // ms
-        'pool_usage' => 80,         // %
-        'query_time' => 1000,       // ms
-        'error_rate' => 0.01        // 1%
+    private \Redis $redis;
+    private array $thresholds = [
+        'connection_wait' => 200,
+        'pool_usage' => 80,
+        'query_time' => 1000,
+        'error_rate' => 0.01
     ];
 
-    public function __construct() {
+    public function __construct(
+        private string $host = '127.0.0.1',
+        private int $port = 6379,
+        private float $timeout = 2.5,
+        private int $retryInterval = 100
+    ) {
         $this->redis = new \Redis();
         $this->logger = LogHelper::getInstance();
+
+        try {
+            if (!$this->redis->connect($host, $port, $timeout, null, $retryInterval)) {
+                throw new RedisException('Redis连接失败');
+            }
+        } catch (RedisException $e) {
+            $this->logger->error('Redis连接异常: ' . $e->getMessage());
+            throw $e;
+        }
     }
 
     public function checkMetrics(array $metrics): void {

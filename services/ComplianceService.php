@@ -12,15 +12,20 @@ use Models\ContractSignature;
 
 class ComplianceService
 {
-    private $db;
-
-    public function __construct()
-    {
+    public function __construct(
+        private readonly DatabaseHelper $db = new DatabaseHelper()
+    ) {
         $this->db = new DatabaseHelper();
     }
 
     /**
      * 检查电子签名合规性（符合《电子签名法》）
+     */
+    /**
+     * 检查电子签名合规性（符合《电子签名法》）
+     * @param int $contractId 合同ID
+     * @return array{valid:bool,errors:array<string>,standard:string} 合规性检查结果
+     * @throws RuntimeException 当合同不存在或检查失败时
      */
     public function checkSignatureCompliance(int $contractId): array
     {
@@ -58,6 +63,12 @@ class ComplianceService
 
     /**
      * 检查合同主体资质
+     */
+    /**
+     * 检查合同主体资质
+     * @param int $contractId 合同ID
+     * @return array{valid:bool,errors:array<string>,standards:array<string>} 合规性检查结果
+     * @throws RuntimeException 当合同不存在或检查失败时
      */
     public function checkPartiesCompliance(int $contractId): array
     {
@@ -125,6 +136,11 @@ class ComplianceService
 
     /**
      * 检查合同条款合规性
+     */
+    /**
+     * 检查合同条款合规性
+     * @param string $content 合同内容
+     * @return array{valid:bool,errors:array<string>,standards:array<string>} 合规性检查结果
      */
     public function checkClausesCompliance(string $content): array
     {

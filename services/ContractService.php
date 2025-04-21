@@ -11,96 +11,119 @@ use Libs\CryptoHelper;
 use Models\Contract;
 use Models\ContractTemplate;
 use Models\ContractSignature;
+use RuntimeException;
 
 class ContractService
 {
-    private $db;
-    private $crypto;
-    private $cache;
-    private $compliance;
-
     public function __construct(
-        DatabaseHelper $db = null,
-        CacheService $cache = null
+        private readonly DatabaseHelper $db = new DatabaseHelper(),
+        private readonly CacheService $cache = new CacheService(),
+        private readonly CryptoHelper $crypto = new CryptoHelper(),
+        private readonly ?ComplianceService $compliance = null
     ) {
-        $this->db = $db ?? DatabaseHelper::getInstance();
-        $this->crypto = new CryptoHelper();
         $this->compliance = class_exists('\Services\ComplianceService')
             ? new \Services\ComplianceService()
             : null;
-        $this->cache = $cache ?? CacheService::getInstance();
     }
 
     /**
      * 创建合同模板
+     * @param string $name 模板名称
+     * @param string $content 模板内容
+     * @param int $creatorId 创建者ID
+     * @return array{success:bool,template_id?:int,error?:string} 创建结果
+     * @throws RuntimeException 当加密或保存失败时
      */
     public function createTemplate(string $name, string $content, int $creatorId): array
     {
-        // 内容加密存储
-        $encryptedContent = $this->crypto->encrypt($content);
-        
-        $template = new ContractTemplate();
-        $template->name = $name;
-        $template->content = $encryptedContent;
-        $template->created_by = $creatorId;
-        
-        if ($template->save()) {
-            return ['success' => true, 'template_id' => $template->id];
+        try {
+            // 内容加密存储
+            $encryptedContent = $this->crypto->encrypt($content);
+            
+            $template = new ContractTemplate();
+            $template->name = $name;
+            $template->content = $encryptedContent;
+            $template->created_by = $creatorId;
+            
+            if ($template->save()) {
+                return ['success' => true, 'template_id' => $template->id];
+            }
+            
+            throw new RuntimeException('模板创建失败');
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
         }
-        
-        return ['success' => false, 'error' => '模板创建失败'];
     }
 
     /**
      * 签署合同
+     * @param int $contractId 合同ID
+     * @param int $userId 用户ID
+     * @param string $signatureData 签名数据
+     * @param string $algorithm 签名算法
+     * @return array{success:bool,error?:string} 签署结果
+     * @throws RuntimeException 当签名或保存失败时
      */
     public function signContract(int $contractId, int $userId, string $signatureData, string $algorithm = 'RSA-SHA512'): array
     {
-        // 验证合同状态
-        $contract = Contract::find($contractId);
-        if (!$contract || $contract->status !== 'pending') {
-            return ['success' => false, 'error' => '合同不可签署'];
-        }
+        try {
+            // 验证合同状态
+            $contract = Contract::find($contractId);
+            if (!$contract || $contract->status !== 'pending') {
+                throw new RuntimeException('合同不可签署');
+            }
 
-        // 创建签名记录
-        $signature = new ContractSignature();
-        $signature->contract_id = $contractId;
-        $signature->user_id = $userId;
-        $signature->signature = $this->crypto->encrypt($signatureData);
-        $signature->algorithm = $algorithm;
-        
-        if ($signature->save()) {
+            // 创建签名记录
+            $signature = new ContractSignature();
+            $signature->contract_id = $contractId;
+            $signature->user_id = $userId;
+            $signature->signature = $this->crypto->encrypt($signatureData);
+            $signature->algorithm = $algorithm;
+            
+            if (!$signature->save()) {
+                throw new RuntimeException('签名保存失败');
+            }
+            
             // 更新合同状态
             $contract->status = 'signed';
             $contract->signed_at = date('Y-m-d H:i:s');
-            $contract->save();
+            if (!$contract->save()) {
+                throw new RuntimeException('合同状态更新失败');
+            }
             
             return ['success' => true];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
         }
-        
-        return ['success' => false, 'error' => '签署失败'];
     }
 
     /**
      * 归档合同
+     * @param int $contractId 合同ID
+     * @return array{success:bool,error?:string} 归档结果
+     * @throws RuntimeException 当归档或区块链存证失败时
      */
     public function archiveContract(int $contractId): array
     {
-        $contract = Contract::find($contractId);
-        if (!$contract || $contract->status !== 'signed') {
-            return ['success' => false, 'error' => '合同不可归档'];
-        }
+        try {
+            $contract = Contract::find($contractId);
+            if (!$contract || $contract->status !== 'signed') {
+                throw new RuntimeException('合同不可归档');
+            }
 
-        $contract->status = 'archived';
-        $contract->archived_at = date('Y-m-d H:i:s');
-        
-        if ($contract->save()) {
+            $contract->status = 'archived';
+            $contract->archived_at = date('Y-m-d H:i:s');
+            
+            if (!$contract->save()) {
+                throw new RuntimeException('合同归档失败');
+            }
+            
             // 区块链存证
             $this->blockchainArchive($contract);
             return ['success' => true];
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
         }
-        
-        return ['success' => false, 'error' => '归档失败'];
     }
 
     /**

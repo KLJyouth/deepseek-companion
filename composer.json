@@ -1,0 +1,8 @@
+{
+    "name": "deepseek-companion",
+    "autoload": {
+        "psr-4": {
+            "Traits\\": "traits/"
+        }
+    }
+}

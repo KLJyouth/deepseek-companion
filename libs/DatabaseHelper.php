@@ -15,22 +15,27 @@ final class DatabaseHelper {
     private static ?self $instance = null;
     private string $tablePrefix;
     private mysqli $connection;
-    private $connectionPool = [];
-    private $masterConn;
-    private $slaveConns = [];
-    private $maxConnections = 10;
+    private array $connectionPool = [];
+    private ?mysqli $masterConn = null;
+    private array $slaveConns = [];
+    private int $maxConnections = 10;
     private ?LogHelper $logger = null;
-    private string $currentXid;
+    private string $currentXid = '';
     private ModelPerformanceMonitor $monitor;
 
-    private function __construct(string $prefix = '') {
-        $this->prefix = $prefix;
-        $this->logger = LogHelper::getInstance();
+    private function __construct(
+        string $prefix = '',
+        ?LogHelper $logger = null,
+        ?ModelPerformanceMonitor $monitor = null
+    ) {
+        $this->tablePrefix = $prefix;
+        $this->logger = $logger ?? LogHelper::getInstance();
         $this->connection = $this->createConnection();
+        $this->monitor = $monitor ?? new ModelPerformanceMonitor();
     }
 
-    private function validateConnection() {
-        if (!$this->connection) {
+    private function validateConnection(): void {
+        if (!$this->connection instanceof mysqli) {
             throw new DatabaseException("Database connection lost");
         }
     }
@@ -102,10 +107,14 @@ SQL;
     /**
      * 安全查询方法
      */
-    public function secureQuery($sql, $params = []) {
+    /**
+     * 执行安全的预处理查询
+     * @throws Exception 当查询执行失败时抛出异常
+     */
+    public function secureQuery(string $sql, array $params = []): mysqli_stmt {
         try {
             $stmt = $this->connection->prepare($sql);
-            if (!$stmt) {
+            if (!$stmt instanceof mysqli_stmt) {
                 throw new Exception("预处理失败: " . $this->connection->error);
             }
             
@@ -144,7 +153,11 @@ SQL;
     /**
      * 获取单条记录(自动解密)
      */
-    public function getRow($sql, $params = []) {
+    /**
+     * 获取单条记录并自动解密
+     * @return array|null 返回解密后的记录或null
+     */
+    public function getRow(string $sql, array $params = []): ?array {
         $stmt = $this->secureQuery($sql, $params);
         $result = $stmt->get_result();
         
@@ -159,7 +172,11 @@ SQL;
     /**
      * 获取多条记录(自动解密) 
      */
-    public function getRows($sql, $params = []) {
+    /**
+     * 获取多条记录并自动解密
+     * @return array 返回解密后的记录数组
+     */
+    public function getRows(string $sql, array $params = []): array {
         $stmt = $this->secureQuery($sql, $params);
         $result = $stmt->get_result();
         
@@ -174,7 +191,11 @@ SQL;
     /**
      * 插入记录(自动加密敏感字段)
      */
-    public function insert($table, $data) {
+    /**
+     * 插入记录并自动加密敏感字段
+     * @return int 返回插入记录的ID
+     */
+    public function insert(string $table, array $data): int {
         $columns = [];
         $placeholders = [];
         $params = [];
@@ -710,34 +731,7 @@ SQL;
         return (new ModelPerformanceMonitor())->getMetrics();
     }
     
-    public function transaction(callable $callback) {
-        $conn = $this->getConnection(true);
-        $xid = null;
-        
-        try {
-            // 启动分布式事务
-            $xid = $this->beginTransaction($conn);
-            
-            // 执行事务回调
-            $result = $callback($this);
-            
-            // 预提交
-            if ($this->prepareCommit($xid)) {
-                $this->commit($xid);
-            } else {
-                throw new \Exception("Transaction prepare failed");
-            }
-            
-            return $result;
-        } catch (\Exception $e) {
-            if ($xid) {
-                $this->rollback($xid);
-            }
-            throw $e;
-        } finally {
-            $this->releaseConnection($conn);
-        }
-    }
+
     
     private function prepareCommit(string $xid): bool {
         // 实现两阶段提交的准备阶段
@@ -751,31 +745,11 @@ SQL;
         return $prepared;
     }
     
-    public function beginTransaction(): bool {
-        try {
-            $this->logger->info("Starting transaction");
-            $xid = TransactionManager::begin();
-            $this->currentXid = $xid;
-            return true;
-        } catch (Exception $e) {
-            $this->logger->error("Transaction start failed: " . $e->getMessage());
-            throw $e;
-        }
-    }
+
     
-    public function commit(): bool {
-        if ($this->currentXid) {
-            return TransactionManager::commit($this->currentXid);
-        }
-        return false;
-    }
     
-    public function rollback(): bool {
-        if ($this->currentXid) {
-            return TransactionManager::rollback($this->currentXid);
-        }
-        return false;
-    }
+    
+
 
     private function createConnection(): mysqli
     {

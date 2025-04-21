@@ -1,11 +1,29 @@
 <?php
+/**
+ * 安全服务类
+ * 版权所有 广西港妙科技有限公司
+ */
+
+namespace Services;
+
+use Exception;
+use RuntimeException;
+use Libs\LogHelper;
+
 class SecurityService
 {
-    private $backupDir = '/var/backups/env_files';
-    private $accessLog = '/var/log/install_bak_access.log';
-    private $gpgRecipientFile = '/etc/gpg_recipient';
+    public function __construct(
+        private readonly string $backupDir = '/var/backups/env_files',
+        private readonly string $accessLog = '/var/log/install_bak_access.log',
+        private readonly string $gpgRecipientFile = '/etc/gpg_recipient'
+    ) {}
 
     // 检查备份状态
+    /**
+     * 检查备份状态
+     * @return array{healthy:bool,message:string} 备份状态信息
+     * @throws RuntimeException 当备份检查失败时
+     */
     public function checkBackups(): array
     {
         $status = ['healthy' => true, 'message' => '备份正常'];
@@ -58,6 +76,10 @@ class SecurityService
     }
 
     // 获取备份文件列表
+    /**
+     * 获取备份文件列表
+     * @return array<array{name:string,size:int,modified:string,path:string}> 备份文件列表
+     */
     public function getBackupFiles(): array
     {
         $backups = [];
@@ -77,6 +99,10 @@ class SecurityService
     }
 
     // 检查日志异常
+    /**
+     * 检查日志异常
+     * @return array<string> 异常日志列表
+     */
     public function checkLogAlerts(): array
     {
         $alerts = [];
@@ -96,6 +122,10 @@ class SecurityService
     }
 
     // 获取访问日志
+    /**
+     * 获取访问日志
+     * @return array<string> 访问日志列表
+     */
     public function getAccessLogs(): array
     {
         if (!file_exists($this->accessLog)) {
@@ -106,6 +136,10 @@ class SecurityService
     }
 
     // 检查GPG密钥状态
+    /**
+     * 检查GPG密钥状态
+     * @return array{healthy:bool,message:string} GPG密钥状态
+     */
     public function checkGpgKey(): array
     {
         $status = ['healthy' => true, 'message' => 'GPG密钥配置正常'];
@@ -129,6 +163,10 @@ class SecurityService
     }
 
     // 获取当前GPG密钥
+    /**
+     * 获取当前GPG密钥
+     * @return string 当前配置的GPG密钥邮箱
+     */
     public function getCurrentGpgKey(): string
     {
         return file_exists($this->gpgRecipientFile) 
@@ -137,6 +175,12 @@ class SecurityService
     }
 
     // 更新GPG密钥
+    /**
+     * 更新GPG密钥
+     * @param string $email GPG密钥邮箱
+     * @return array{success:bool,message:string} 更新结果
+     * @throws RuntimeException 当更新失败时
+     */
     public function updateGpgKey(string $email): array
     {
         try {

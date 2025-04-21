@@ -2,11 +2,25 @@
 namespace Services;
 
 class LockMonitorService {
-    private $redis;
+    private Redis $redis;
     private const LOCK_PREFIX = 'lock:monitor:';
-    
-    public function __construct() {
-        $this->redis = new \Redis();
+
+    public function __construct(
+        private string $host = '127.0.0.1',
+        private int $port = 6379,
+        private float $timeout = 2.5,
+        private int $retryInterval = 100
+    ) {
+        $this->redis = new Redis();
+
+        try {
+            if (!$this->redis->connect($host, $port, $timeout, null, $retryInterval)) {
+                throw new RedisException('Redis连接失败');
+            }
+        } catch (RedisException $e) {
+            LogHelper::getInstance()->error('Redis监控连接异常: ' . $e->getMessage());
+            throw $e;
+        }
     }
     
     public function recordLockMetrics(string $resource, array $metrics): void {
