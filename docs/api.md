@@ -143,7 +143,54 @@ sequenceDiagram
 2. 实现本地缓存，对重复数据直接返回缓存结果
 3. 使用WebSocket连接实现实时分析
 
-## 5. 合同管理API
+## 5. AI服务API
+
+### 5.1 机器学习模型服务
+- `POST /api/ml-models/predict` - 执行模型预测
+  - 请求体:
+    ```json
+    {
+      "model_id": "string",
+      "input_data": {},
+      "quantum_encryption": false
+    }
+    ```
+  - 响应:
+    ```json
+    {
+      "prediction": {},
+      "confidence": 0.95,
+      "model_version": "1.2.0"
+    }
+    ```
+
+### 5.2 模型版本管理
+- `GET /api/ml-models/versions` - 获取模型版本列表
+- `POST /api/ml-models/switch` - 切换模型版本
+
+### 5.3 模型性能监控
+- `GET /api/ml-models/metrics` - 获取模型性能指标
+
+## 6. 量子加密专项（更新）
+
+### 6.1 新增量子密钥管理API
+- `POST /api/quantum/keys/generate` - 生成量子密钥对
+- `GET /api/quantum/keys/{id}` - 获取量子公钥
+
+### 6.2 混合加密流程优化
+```mermaid
+sequenceDiagram
+    客户端->>+密钥服务: 获取量子公钥
+    密钥服务-->>-客户端: 返回公钥+签名
+    客户端->>客户端: 生成临时AES-256密钥
+    客户端->>客户端: 用量子公钥加密AES密钥
+    客户端->>+API服务: 发送加密数据(AES)+加密密钥(量子)
+    API服务->>API服务: 用量子私钥解密AES密钥
+    API服务->>API服务: 用AES密钥解密数据
+    API服务-->>-客户端: 返回量子签名结果
+```
+
+## 7. 合同管理API（更新）
 
 ### 5.1 合同模板管理
 - `GET /api/contract-templates` - 获取合同模板列表

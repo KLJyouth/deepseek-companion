@@ -110,10 +110,15 @@ graph LR
 .
 ### 环境要求
 
-- Node.js 16+
-- PHP 7.4+
-- MySQL 8.0+
-- Composer
+- **Node.js**: 18+ (推荐LTS版本)
+- **PHP**: 8.1+ (需安装PQCrypto扩展)
+- **MySQL**: 8.0+ (支持JSON字段和窗口函数)
+- **Composer**: 2.0+ (依赖管理)
+- **Redis**: 6.0+ (用于缓存和会话管理)
+- **系统依赖**:
+  - OpenSSL 1.1.1+
+  - PQCrypto扩展(量子加密支持)
+  - GMP扩展(大数运算)
 
 ### 部署步骤
 
