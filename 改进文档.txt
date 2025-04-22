@@ -82,7 +82,7 @@ file_put_contents(__DIR__.'/../config.php', generateConfigFile($dbConfig));
 1. 微服务化架构拆分
 模块拆分：
 plaintext
-deepseek-companion/
+stanfai-司单服Ai智能安全法务/
 ├── auth-service/         # 认证微服务（独立端口5001）
 ├── security-service/     # 安全服务（包含威胁检测、加密模块）
 ├── analytics-service/    # 数据统计服务（提供Prometheus监控接口）
@@ -329,7 +329,7 @@ file_put_contents(__DIR__.'/../config.php', generateConfigFile($dbConfig));
 1. 微服务化架构拆分
 模块拆分：
 plaintext
-deepseek-companion/
+stanfai-司单服Ai智能安全法务/
 ├── auth-service/         # 认证微服务（独立端口5001）
 ├── security-service/     # 安全服务（包含威胁检测、加密模块）
 ├── analytics-service/    # 数据统计服务（提供Prometheus监控接口）
