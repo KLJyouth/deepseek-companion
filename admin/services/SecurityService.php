@@ -192,6 +192,10 @@ class SecurityService
     private function callPredictionModel(array $data): array {
         $ch = curl_init(self::MODEL_ENDPOINT.'/predict');
         curl_setopt_array($ch, [
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
                 'X-API-Key: '.getenv('AI_FIREWALL_KEY')

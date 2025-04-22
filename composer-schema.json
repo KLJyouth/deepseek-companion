@@ -1,0 +1,95 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "name": "Package",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [ "name", "description" ],
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Package name"
+        },
+        "type": {
+            "type": "string",
+            "description": "Package type"
+        },
+        "version": {
+            "type": "string",
+            "description": "Package version"
+        },
+        "license": {
+            "type": ["string", "array"],
+            "description": "License name"
+        },
+        "description": {
+            "type": "string",
+            "description": "Package description"
+        },
+        "authors": {
+            "type": "array",
+            "description": "List of authors",
+            "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Author name"
+                    },
+                    "email": {
+                        "type": "string",
+                        "description": "Author email"
+                    }
+                }
+            }
+        },
+        "require": {
+            "type": "object",
+            "description": "List of dependencies",
+            "additionalProperties": true
+        },
+        "require-dev": {
+            "type": "object",
+            "description": "List of development dependencies",
+            "additionalProperties": true
+        },
+        "autoload": {
+            "type": "object",
+            "description": "Autoload mapping",
+            "additionalProperties": true,
+            "properties": {
+                "psr-4": {
+                    "type": "object",
+                    "description": "PSR-4 autoloading",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "autoload-dev": {
+            "type": "object",
+            "description": "Development autoload mapping",
+            "additionalProperties": true,
+            "properties": {
+                "psr-4": {
+                    "type": "object",
+                    "description": "PSR-4 autoloading",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "scripts": {
+            "type": "object",
+            "description": "Composer scripts",
+            "additionalProperties": true
+        },
+        "minimum-stability": {
+            "type": "string",
+            "description": "Minimum stability"
+        },
+        "config": {
+            "type": "object",
+            "description": "Composer configuration",
+            "additionalProperties": true
+        }
+    }
+}

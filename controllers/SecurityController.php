@@ -202,8 +202,27 @@ class SecurityController
 
     private function checkPermission($action): bool 
     {
-        return isset($_SESSION['permissions']) && 
-               in_array($action, $_SESSION['permissions']);
+        // 实时数据库权限验证
+        $valid = $this->dbHelper->getValue(
+            "SELECT COUNT(*) FROM role_permissions rp
+             JOIN user_roles ur ON ur.role_id = rp.role_id
+             WHERE ur.user_id = ? AND rp.permission = ?",
+            [
+                ['value' => $_SESSION['user_id'], 'encrypt' => false],
+                ['value' => $action, 'encrypt' => false]
+            ]
+        ) > 0;
+
+        // 记录权限验证审计日志
+        $this->auditService->log('permission_check', [
+            'user_id' => $_SESSION['user_id'],
+            'action' => $action,
+            'result' => $valid ? 'allowed' : 'denied',
+            'ip' => $_SERVER['REMOTE_ADDR'],
+            'user_agent' => $_SERVER['HTTP_USER_AGENT']
+        ]);
+
+        return $valid;
     }
 
     private function sanitizeInput($input): string

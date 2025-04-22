@@ -1,6 +1,8 @@
 <?php
 namespace Services;
 
+use Libs\LogHelper;
+
 class LockMonitorService {
     private Redis $redis;
     private const LOCK_PREFIX = 'lock:monitor:';
@@ -11,13 +13,13 @@ class LockMonitorService {
         private float $timeout = 2.5,
         private int $retryInterval = 100
     ) {
-        $this->redis = new Redis();
+        $this->redis = new \Redis();
 
         try {
             if (!$this->redis->connect($host, $port, $timeout, null, $retryInterval)) {
                 throw new RedisException('Redis连接失败');
             }
-        } catch (RedisException $e) {
+        } catch (\RedisException $e) {
             LogHelper::getInstance()->error('Redis监控连接异常: ' . $e->getMessage());
             throw $e;
         }
