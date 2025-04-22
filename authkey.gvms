@@ -1,0 +1,36 @@
+<?php
+namespace Services;
+
+class AuthKeySystem {
+    private $encryptionKey;
+    private $signatureAlgorithm;
+
+    public function __construct() {
+        $this->encryptionKey = $this->generateEncryptionKey();
+        $this->signatureAlgorithm = 'SHA3-512';
+    }
+
+    public function generateAuthKey(array $deviceInfo): string {
+        $deviceSignature = $this->generateDeviceSignature($deviceInfo);
+        $encryptedData = $this->encryptData($deviceSignature);
+        return $this->formatAuthKey($encryptedData);
+    }
+
+    private function generateEncryptionKey(): string {
+        return bin2hex(random_bytes(64));
+    }
+
+    private function generateDeviceSignature(array $deviceInfo): string {
+        return hash($this->signatureAlgorithm, json_encode($deviceInfo));
+    }
+
+    private function encryptData(string $data): string {
+        $iv = random_bytes(16);
+        return base64_encode($iv . openssl_encrypt($data, 'aes-256-cbc', $this->encryptionKey, 0, $iv));
+    }
+
+    private function formatAuthKey(string $encryptedData): string {
+        return 'GVMS_AUTH_KEY_' . substr($encryptedData, 0, 128) . '_' . time();
+    }
+}
+?>

@@ -29,9 +29,13 @@ class ThreatIntelligenceService
 
     // 威胁情报源配置
     private const INTELLIGENCE_SOURCES = [
-        '微步在线' => 'https://api.threatbook.cn/v3/',
-        'AlienVault' => 'https://otx.alienvault.com/api/v1/',
-        'CVE数据库' => 'https://services.nvd.nist.gov/rest/json/cves/1.0'
+        '微步在线' => ['endpoint' => 'https://api.threatbook.cn/v3/ip/query', 'type' => 'ip'],
+        'VirusTotal' => ['endpoint' => 'https://www.virustotal.com/api/v3/ip_addresses/', 'type' => 'ip'],
+        'IBM X-Force' => ['endpoint' => 'https://api.xforce.ibmcloud.com/ipr/', 'type' => 'ip'],
+        'Cisco Talos' => ['endpoint' => 'https://talosintelligence.com/sb_api/remote_lookup', 'type' => 'domain'],
+        'FireEye' => ['endpoint' => 'https://api.fireeye.com/alert/v3/alerts', 'type' => 'malware'],
+        'ThreatCrowd' => ['endpoint' => 'https://www.threatcrowd.org/searchApi/v2/domain/report/', 'type' => 'domain'],
+        'MalwareBazaar' => ['endpoint' => 'https://mb-api.abuse.ch/api/v1/', 'type' => 'malware']
     ];
 
     public function __construct(Redis $redis, Client $httpClient, LoggerInterface $logger)
@@ -61,8 +65,9 @@ class ThreatIntelligenceService
         $combinedData = [];
         foreach (self::INTELLIGENCE_SOURCES as $source => $endpoint) {
             try {
-                $response = $this->httpClient->get($endpoint, [
-                    'headers' => ['Authorization' => $_ENV['THREAT_API_KEY']]
+                $response = $this->httpClient->request('GET', $endpoint['endpoint'].$this->getQueryParam($source), [
+                    'headers' => $this->getAuthHeaders($source),
+                    'timeout' => 5
                 ]);
                 $data = json_decode((string)$response->getBody(), true);
                 $combinedData[$source] = $this->processThreatData($data);
