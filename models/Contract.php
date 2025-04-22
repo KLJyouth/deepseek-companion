@@ -1,6 +1,8 @@
 <?php
 namespace Models;
 
+require_once __DIR__.'/../../traits/InputValidation.php';
+require_once __DIR__.'/ContractSignature.php';
 use Traits\InputValidation;
 use Models\BaseModel;
 use Models\ContractSignature;
