@@ -10,7 +10,6 @@
         }
     ],
     "require": {
-        "ext-posix": "*",
         "php": ">=8.1",
         "ext-json": "*",
         "ext-redis": "*",
@@ -19,6 +18,9 @@
         "endroid/qr-code": "^4.8",
         "ext-pdo": "*",
         "ext-gd": "*"
+    },
+    "suggest": {
+        "ext-posix": "在Linux环境中用于进程管理和安全控制"
     },
     "autoload": {
         "psr-4": {
@@ -35,7 +37,7 @@
         "post-install-cmd": [
             "Services\\Installer:createDeploymentUser"
         ],
-        "post-install-cmd": [
+        "post-update-cmd": [
             "Services\\Installer:createDeploymentUser"
         ],
         "validate": "./scripts/validate_composer.sh"
