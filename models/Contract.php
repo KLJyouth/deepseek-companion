@@ -11,7 +11,7 @@ class Contract extends BaseModel
 {
     use InputValidation;
 
-    protected static string $table = 'contracts';
+    protected static string $table = 'ac_contracts';
     
     /** @var array<string,string> 必填字段 */
     protected array $required = ['title', 'content', 'parties'];

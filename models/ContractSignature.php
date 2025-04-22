@@ -5,7 +5,7 @@ use Models\BaseModel;
 
 class ContractSignature extends BaseModel
 {
-    protected static string $table = 'contract_signatures';
+    protected static string $table = 'ac_signatures';
     
     /** @var array<string> 必填字段 */
     protected array $required = ['contract_id', 'signer_id', 'signature_data'];

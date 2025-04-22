@@ -26,13 +26,13 @@ abstract class BaseModel
     public static function find(int|string $id): ?static 
     {
         $instance = new static();
-        $result = $instance->db->query(
+        $rows = $instance->db->getRows(
             "SELECT * FROM " . static::$table . " WHERE " . static::$primaryKey . " = ?",
-            [['value' => $id, 'type' => is_int($id) ? 'i' : 's']]
+            [$id]
         );
         
-        if ($result && $row = $result->fetch_assoc()) {
-            $instance->attributes = $row;
+        if (!empty($rows)) {
+            $instance->attributes = $rows[0];
             return $instance;
         }
         return null;
