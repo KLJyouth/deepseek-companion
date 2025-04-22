@@ -14,10 +14,28 @@
 - `test_encryption_flow.php`：加密流程测试
 
 ## libs/
-- `CryptoHelper.php`：自研加密、解密、量子加密、CSRF、密码哈希、零知识证明、区块链存证
-  - `init()`：初始化加密配置
-  - `encrypt()/decrypt()`：AES-256-GCM加解密
-  - `quantumEncrypt()/quantumDecrypt()`：量子安全加解密（创新）
+### 量子加密相关文件
+- `CryptoHelper.php`：
+  - `initPQC()`：初始化量子加密
+  - `quantumKeyRotate()`：密钥轮换
+  - `quantumHealthCheck()`：健康检查
+- `QuantumKeyManager.php`：
+  - `generateKeyPair()`：密钥对生成
+  - `distributeKeys()`：密钥分发
+  - `revokeKeys()`：密钥撤销
+
+### 文件关系
+```mermaid
+graph LR
+    A[CryptoHelper.php] --> B[QuantumKeyManager.php]
+    B --> C[DatabaseHelper.php]
+    A --> D[config/quantum.php]
+```
+
+### 关键流程
+1. 系统启动时调用`initPQC()`
+2. 每日定时任务调用`quantumKeyRotate()`
+3. 加密操作时自动选择量子或传统加密
   - `generateCsrfToken()/validateCsrfToken()`：CSRF令牌
   - `hashPassword()/verifyPassword()`：密码哈希与验证
   - `generateBiometricChallenge()/verifyBiometricSignature()`：生物识别签名与验证
@@ -53,10 +71,30 @@
 - `refactor/LoginController.refactor.php`：登录控制器重构示例
 
 ## services/
-- `DeviceManagementService.php`：设备指纹与地理位置
-  - `generateDeviceFingerprint()/validateDeviceFingerprint()`：设备指纹生成与校验
-  - `getLocationFromIP()/isLocationSuspicious()`：地理位置检测
-  - `sendUnknownDeviceAlert()`：未知设备告警
+### AI服务相关文件
+- `AIService.php`：
+  - `trainModel()`：模型训练
+  - `predict()`：预测服务
+  - `evaluate()`：模型评估
+- `ModelVersionControl.php`：
+  - `deployModel()`：模型部署
+  - `rollbackModel()`：版本回滚
+- `MLPredictionService.php`：
+  - `preprocess()`：数据预处理
+  - `postprocess()`：结果后处理
+
+### 文件关系
+```mermaid
+graph TD
+    A[AIService.php] --> B[ModelVersionControl.php]
+    B --> C[MLPredictionService.php]
+    A --> D[config/ai.php]
+```
+
+### 关键流程
+1. 数据收集后调用`preprocess()`
+2. 训练完成后调用`deployModel()`
+3. 预测请求通过`predict()`处理
 - `SystemMonitorService.php`：系统指标采集
   - `sampleMetrics()/getCurrentLoad()/getLoadTrend()`：指标采集与趋势
 - `WebSocketService.php`：WebSocket服务端

@@ -91,19 +91,89 @@
 4. 测试数据保护：运行 `npm run test:data-protection` 验证
    - 测试内容：包括数据加密、解密、存储安全性和过期策略
 
-### DeepSeek集成模块
+### 量子加密部署
 
 #### 1. 准备工作
-1. 申请API密钥：
-   - 登录DeepSeek控制台(https://console.deepseek.com)
-   - 创建新应用，选择"安全分析"产品类型
-   - 获取API密钥和项目ID
+1. 系统要求：
+   - 支持AVX2指令集的CPU
+   - 至少4GB内存
+   - OpenSSL 1.1.1+
 
-2. 环境配置：
+2. 安装依赖：
    ```bash
-   # 安装必要依赖
-   npm install @deepseek/sdk@latest jsonwebtoken
+   # 安装pqcrypto扩展
+   pecl install pqcrypto
+   
+   # 安装其他依赖
+   apt-get install -y libssl-dev libgmp-dev
    ```
+
+3. 配置PHP：
+   ```ini
+   extension=pqcrypto.so
+   pqcrypto.kyber1024_enabled=1
+   ```
+
+#### 2. 密钥管理
+1. 初始化密钥：
+   ```php
+   use Libs\CryptoHelper;
+   CryptoHelper::initPQC();
+   ```
+
+2. 密钥轮换策略：
+   ```bash
+   # 每日轮换密钥
+   0 3 * * * php /path/to/quantum_key_rotate.php
+   ```
+
+### AI服务部署
+
+#### 1. 系统要求
+- GPU: NVIDIA Tesla T4或更高
+- CUDA 11.0+
+- 内存: 16GB+
+
+#### 2. 模型部署
+1. 下载模型：
+   ```bash
+   python download_models.py --model=threat_detection_v3
+   ```
+
+2. 启动服务：
+   ```bash
+   python serve.py --port=5000 --workers=4
+   ```
+
+#### 3. 性能优化
+1. 资源配置：
+   ```yaml
+   # docker-compose.yml示例
+   services:
+     ai_service:
+       deploy:
+         resources:
+           limits:
+             cpus: '4'
+             memory: 8G
+   ```
+
+### 安全最佳实践（更新）
+
+1. **量子加密**：
+   - 敏感数据必须使用量子加密
+   - 每日轮换加密密钥
+   - 监控加密性能指标
+
+2. **AI服务**：
+   - 启用模型版本控制
+   - 实施请求速率限制
+   - 定期更新威胁检测模型
+
+3. **容器安全**：
+   - 使用非root用户运行容器
+   - 定期扫描镜像漏洞
+   - 限制容器资源使用
 
 3. 环境变量配置(.env文件)：
    ```ini

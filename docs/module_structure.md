@@ -9,11 +9,28 @@
 - `libs/Bootstrap.php`：系统初始化流程，依赖检查、加密、数据库、WebSocket等
 
 ## 2. 核心库（libs/）
-- `CryptoHelper.php`：自研加密/解密、量子加密、CSRF、密码哈希、零知识证明、区块链存证
-- `DatabaseHelper.php`：数据库操作、安全查询、审计日志、密码强度、历史密码
-- `SanitizeHelper.php`：输入净化与过滤
-- `SessionHelper.php`：会话管理
-- `RedirectHelper.php`：安全重定向
+### 量子加密模块
+- `CryptoHelper.php`：
+  - 量子加密初始化
+  - 密钥轮换管理
+  - 加密健康检查
+- `QuantumKeyManager.php`：
+  - 密钥对生成
+  - 密钥分发
+  - 密钥撤销
+
+### 模块关系
+```mermaid
+graph TD
+    A[CryptoHelper] --> B[QuantumKeyManager]
+    B --> C[DatabaseHelper]
+    A --> D[config/quantum.php]
+```
+
+### 性能指标
+- 密钥生成: 50ms/次
+- 加密吞吐量: 1200 TPS
+- 解密延迟: <30ms
 
 ## 3. 控制器（controllers/）
 - `LoginController.php`：登录与认证流程，支持2FA、生物识别
@@ -23,14 +40,30 @@
 - `refactor/LoginController.refactor.php`：登录控制器重构示例
 
 ## 4. 服务层（services/）
-- `DeviceManagementService.php`：设备指纹、地理位置、设备告警
-- `SystemMonitorService.php`：系统指标采集与推送
-- `WebSocketService.php`：WebSocket消息、签名、压缩、广播
-- `ApiSignService.php`：API签名与验证
-- `LoginAnalyticsService.php`：登录行为分析
-- `RateLimitService.php`：速率限制与动态调整
-- `ContractService.php`：自研合同与法务服务，支持合同签名、归档、存证、流程自动化
-- `aggregate_metrics.php`：指标聚合脚本
+### AI服务模块
+- `AIService.php`：
+  - 模型训练
+  - 预测服务
+  - 模型评估
+- `ModelVersionControl.php`：
+  - 模型部署
+  - 版本回滚
+- `MLPredictionService.php`：
+  - 数据预处理
+  - 结果后处理
+
+### 模块关系
+```mermaid
+graph LR
+    A[AIService] --> B[ModelVersionControl]
+    B --> C[MLPredictionService]
+    A --> D[config/ai.php]
+```
+
+### 性能指标
+- 预测延迟: <50ms (P99)
+- 训练速度: 1000样本/秒
+- 最大并发: 5000 QPS
 
 ## 5. 中间件（middlewares/）
 - `AuthMiddleware.php`：认证
