@@ -1,6 +1,33 @@
 # 数据库设计文档
 
-## 1. 数据库ER图
+## 数据库架构设计
+
+## 异常处理与日志追踪
+
+1. **中间件日志配置**：
+   - 在SecurityMiddleware中集成Monolog日志组件
+   - 设置错误级别映射：
+     ```php
+     $logLevelMap = [
+         DatabaseException::CLASS => Logger::ERROR,
+         QueryTimeoutException::CLASS => Logger::ALERT
+     ];
+     ```
+
+2. **全链路追踪**：
+   - 在事务管理器中注入Request-ID
+   - 使用DB::listen()记录慢查询：
+     ```php
+     DB::listen(function($query) {
+         if ($query->time > 1000) {
+             LogHelper::logSlowQuery($query);
+         }
+     });
+     ```
+
+3. **日志归档策略**：
+   - 按小时滚动记录到logs/db_audit.log
+   - 自动清理30天前日志
 ```mermaid
 erDiagram
     users ||--o{ sessions : "1:N"
@@ -50,7 +77,7 @@ erDiagram
 | call_count | INT | 调用次数 |
 | date | DATE | 记录日期 |
 
-## 3. 索引设计
+## 索引优化策略
 ```sql
 -- 用户表索引
 CREATE INDEX idx_users_username ON users(username);

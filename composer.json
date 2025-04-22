@@ -1,8 +1,42 @@
 {
-    "name": "deepseek-companion",
+
+    "name": "deepseek/companion",
+    "license": "proprietary",
+    "version": "1.0.0",
+    "description": "智能文档自动化增强系统",
+    "authors": [
+        {
+            "name": "DeepSeek Team",
+            "email": "dev@deepseek.com"
+        }
+    ],
+
+    "require": {
+        "php": ">=7.4",
+        "ext-json": "*",
+        "monolog/monolog": "^2.8"
+    },
+
     "autoload": {
         "psr-4": {
-            "Traits\\": "traits/"
+            "Traits\\": "traits/",
+            "Services\\": "services/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+
+    "scripts": {
+        "test": "phpunit tests/"
+    },
+
+    "minimum-stability": "stable",
+
+    "config": {
+        "preferred-install": "dist",
+        "sort-packages": true
     }
 }

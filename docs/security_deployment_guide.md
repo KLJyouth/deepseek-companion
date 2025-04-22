@@ -2,6 +2,35 @@
 
 这里将详细介绍安全防护系统的部署步骤，从整体部署到模块部署逐步展开。
 
+## 安全配置规范
+
+## PHP版本管理策略
+1. **版本锁定机制**：
+   - 在composer.json中明确指定"php": "^7.4|^8.0"
+   - 使用Docker镜像`FROM php:7.4-fpm-alpine`确保环境一致性
+
+2. **多环境验证**：
+   ```bash
+   # CI/CD中添加版本检查
+   if ! php -v | grep -q 'PHP 7.4'; then
+       echo "PHP version mismatch"
+       exit 1
+   fi
+   ```
+
+3. **版本过时处理**：
+   - 每月执行`composer outdated php`检查
+   - 使用phpstan进行版本兼容性分析
+   - 建立版本升级矩阵文档
+
+4. **运行时验证**：
+   ```php
+   // 在Bootstrap.php添加版本检查
+   if (version_compare(PHP_VERSION, '7.4.0') < 0) {
+       throw new RuntimeException('需要PHP 7.4或更高版本');
+   }
+   ```
+
 ## 整体部署
 
 （此处添加整体部署步骤描述）
