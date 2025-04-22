@@ -340,7 +340,12 @@ class AuthMiddleware {
      * @param string $requiredRole 需要的角色（如'admin'或'user'）
      * @throws \Exception
      */
-    public static function check(string $requiredRole = 'user')
+    /**
+     * 检查用户认证与权限（合并增强版）
+     * @param string|null $requiredRole 需要的角色(admin/user)
+     * @throws \Exception
+     */
+    public static function check(?string $requiredRole = null): void
     {
         // 自动启动会话
         if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -349,21 +354,42 @@ class AuthMiddleware {
 
         // 检查是否已登录
         if (empty($_SESSION['user_id'])) {
+            LogHelper::getInstance()->info('未认证访问被拦截', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
             throw new \Exception('未认证用户');
         }
 
-        // RBAC权限分级校验
-        $role = $_SESSION['role'] ?? 'user';
-        $roles = ['user' => 1, 'admin' => 2];
-        if (isset($roles[$requiredRole]) && isset($roles[$role])) {
-            if ($roles[$role] < $roles[$requiredRole]) {
+        // 检查角色权限（当requiredRole参数存在时）
+        if ($requiredRole) {
+            $currentRole = $_SESSION['role'] ?? 'user';
+            $rolesHierarchy = ['user' => 1, 'admin' => 2];
+
+            if (!isset($rolesHierarchy[$currentRole]) || 
+                !isset($rolesHierarchy[$requiredRole]) ||
+                $rolesHierarchy[$currentRole] < $rolesHierarchy[$requiredRole]) {
+                LogHelper::getInstance()->info('权限不足', [
+                    'user_id' => $_SESSION['user_id'],
+                    'required_role' => $requiredRole,
+                    'actual_role' => $currentRole
+                ]);
                 throw new \Exception('权限不足');
             }
         }
 
-        // 预留多认证方式（如JWT、2FA、设备指纹等）
-        // if (isset($_SESSION['jwt_token'])) { ... }
-        // if (isset($_SESSION['2fa_verified']) && !$_SESSION['2fa_verified']) { ... }
+        // 检查会话安全配置
+        self::secureSession();
+
+        // 检查账户状态（需要数据库连接时）
+        if (isset(self::$dbHelper)) {
+            $userStatus = self::$dbHelper->getValue(
+                "SELECT status FROM users WHERE id = ?",
+                [['value' => $_SESSION['user_id'], 'type' => 'i']]
+            );
+            
+            if ($userStatus != 1) {
+                self::destroySession();
+                throw new \Exception('账户已被禁用');
+            }
+        }
     }
 
     /**
@@ -371,6 +397,14 @@ class AuthMiddleware {
      */
     private function authenticateWithJWT(string $token) {
         try {
+            $decoded = JWT::decode($token, new Key(JWT_SECRET, 'HS256'));
+        } catch (Exception $e) {
+            // 添加详细的错误日志
+            error_log("JWT验证失败: ".$e->getMessage());
+            http_response_code(401);
+            exit(json_encode(['error' => 'Invalid token']));
+        }
+
             $payload = JWT::decode($token, JWT_SECRET_KEY, ['HS256']);
             
             // 验证JWT中的设备指纹
@@ -448,27 +482,7 @@ class AuthMiddleware {
         return false;
     }
 
-    /**
-     * 检查用户是否已认证，并可选检查角色
-     * @param string|null $role 需要的角色(admin/user)
-     * @throws \Exception
-     */
-    public static function check(?string $role = null)
-    {
-        if (session_status() !== PHP_SESSION_ACTIVE) session_start();
-        if (empty($_SESSION['user_id'])) {
-            LogHelper::getInstance()->info('未认证访问被拦截', ['ip' => $_SERVER['REMOTE_ADDR'] ?? '']);
-            throw new \Exception('未认证用户');
-        }
-        if ($role && (!isset($_SESSION['role']) || $_SESSION['role'] !== $role)) {
-            LogHelper::getInstance()->info('权限不足', [
-                'user_id' => $_SESSION['user_id'],
-                'required_role' => $role,
-                'actual_role' => $_SESSION['role'] ?? null
-            ]);
-            throw new \Exception('权限不足');
-        }
-    }
+
 
     /**
      * 密码确认操作（如敏感操作前调用）

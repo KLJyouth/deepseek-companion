@@ -1,84 +1,98 @@
 <?php
+declare(strict_types=1);
+
 namespace Services;
 
 use Libs\CacheHelper;
+use Services\SystemMonitorService;
+use Libs\ConfigHelper;
 use Exception;
 
 class RateLimitService {
-    private $cache;
-    private $defaultLimits = [
+    private CacheHelper $cache;
+    private SystemMonitorService $monitor;
+    
+    private array $defaultLimits = [
         'ip' => [
-            'limit' => 100, // 基础限制
+            'limit' => 100,
             'window' => 60,
-            'min_limit' => 50, // 最低限制
-            'max_limit' => 200 // 最高限制
+            'min_limit' => 50,
+            'max_limit' => 200,
+            'policy' => '100;w=60;burst=50'
         ],
         'user' => [
             'limit' => 30,
             'window' => 60,
             'min_limit' => 15,
-            'max_limit' => 60
+            'max_limit' => 60,
+            'policy' => '30;w=60;burst=15'
+        ],
+        'session' => [
+            'limit' => 60,
+            'window' => 60,
+            'min_limit' => 30,
+            'max_limit' => 120,
+            'policy' => '60;w=60;burst=30'
         ]
     ];
     
-    private $loadFactors = [
-        'cpu' => 1.0,
-        'memory' => 0.7,
-        'concurrent' => 0.5
-    ];
-    
-    private $monitor;
-    
-    public function __construct() {
-        $this->cache = CacheHelper::getInstance();
-        $this->monitor = new SystemMonitorService();
+    public function __construct(
+        CacheHelper $cache,
+        SystemMonitorService $monitor
+    ) {
+        $this->cache = $cache;
+        $this->monitor = $monitor;
     }
     
-    /**
-     * 检查请求速率限制
-     */
     public function check(string $key, string $type = 'ip'): array {
+        if (!array_key_exists($type, $this->defaultLimits)) {
+            throw new Exception("未知的速率限制类型: {$type}");
+        }
+        
         $limits = $this->getLimits($type);
         $cacheKey = "rate_limit:{$type}:{$key}";
         
-        $current = $this->cache->get($cacheKey) ?: [
-            'count' => 0,
-            'reset' => time() + $limits['window']
-        ];
-        
-        // 重置周期
-        if (time() > $current['reset']) {
-            $current = [
+        try {
+            $current = $this->cache->get($cacheKey) ?: [
                 'count' => 0,
                 'reset' => time() + $limits['window']
             ];
+            
+            // 重置周期
+            if (time() > $current['reset']) {
+                $current = [
+                    'count' => 0,
+                    'reset' => time() + $limits['window']
+                ];
+            }
+            
+            // 更新计数
+            $current['count']++;
+            $this->cache->set($cacheKey, $current, $limits['window']);
+            
+            return [
+                'limit' => $limits['limit'],
+                'remaining' => max(0, $limits['limit'] - $current['count']),
+                'reset' => $current['reset'],
+                'policy' => $limits['policy']
+            ];
+        } catch (Exception $e) {
+            // 缓存失败时放宽限制
+            return [
+                'limit' => $limits['max_limit'],
+                'remaining' => $limits['max_limit'],
+                'reset' => time() + $limits['window'],
+                'policy' => $limits['policy']
+            ];
         }
-        
-        // 检查限制
-        $current['count']++;
-        $this->cache->set($cacheKey, $current, $limits['window']);
-        
-        return [
-            'limit' => $limits['limit'],
-            'remaining' => max(0, $limits['limit'] - $current['count']),
-            'reset' => $current['reset']
-        ];
     }
     
     private function getLimits(string $type): array {
-        $config = ConfigHelper::get("rate_limit.{$type}");
-        $limits = array_merge($this->defaultLimits[$type], $config ?: []);
+        $config = ConfigHelper::get("rate_limit.{$type}", []);
+        $limits = array_merge($this->defaultLimits[$type], $config);
         
-        // 根据系统负载动态调整限制
         if ($this->shouldAdjustLimits()) {
-            $adjustment = $this->calculateLoadAdjustment();
-            $limits['limit'] = min(
-                $limits['max_limit'],
-                max(
-                    $limits['min_limit'],
-                    round($limits['limit'] * $adjustment)
-                )
-            );
+            $limits = $this->adjustLimitsByLoad($limits);
         }
         
         return $limits;
@@ -88,55 +102,40 @@ class RateLimitService {
         return ConfigHelper::get('rate_limit.dynamic_adjustment', true);
     }
     
-    private function calculateLoadAdjustment(): float {
-        $load = $this->getSystemLoad();
-        $adjustment = 1.0;
+    private function adjustLimitsByLoad(array $limits): array {
+        $load = $this->monitor->getSystemLoad();
+        $adjustment = $this->calculateLoadAdjustment($load);
         
-        foreach ($this->loadFactors as $metric => $factor) {
-            if ($load[$metric] > 0.7) { // 高负载
-                $adjustment *= (1 - ($load[$metric] - 0.7) * $factor);
-            } else { // 低负载
-                $adjustment *= (1 + (0.7 - $load[$metric]) * $factor * 0.5);
-            }
-        }
+        $limits['limit'] = min(
+            $limits['max_limit'],
+            max(
+                $limits['min_limit'],
+                round($limits['limit'] * $adjustment)
+            )
+        );
         
-        return max(0.5, min(1.5, $adjustment)); // 限制调整范围
+        return $limits;
     }
     
-    private function getSystemLoad(): array {
-        $cpuCores = function_exists('sysconf') && defined('_SC_NPROCESSORS_ONLN') ? sysconf(_SC_NPROCESSORS_ONLN) : 1;
-        return [
-            'cpu' => sys_getloadavg()[0] / max(1, $cpuCores),
-            'memory' => 1 - (memory_get_usage(true) / max(1, memory_get_usage(false))),
-            'concurrent' => $this->getConcurrentRequests() / 100
-        ];
+    private function calculateLoadAdjustment(array $load): float {
+        $cpuAdjustment = $this->calculateCpuAdjustment($load['cpu']);
+        $memoryAdjustment = $this->calculateMemoryAdjustment($load['memory']);
+        
+        return ($cpuAdjustment + $memoryAdjustment) / 2;
     }
     
-    private function getConcurrentRequests(): int {
-        return $this->monitor->getCurrentLoad()['concurrent'];
+    private function calculateCpuAdjustment(float $cpuUsage): float {
+        if ($cpuUsage > 0.8) return 0.7; // 高负载时降低30%
+        if ($cpuUsage > 0.6) return 0.85; // 中等负载时降低15%
+        if ($cpuUsage < 0.3) return 1.2; // 低负载时增加20%
+        return 1.0; // 正常负载
     }
-
-    /**
-     * 检查速率限制
-     * @param string $key
-     * @param int $limit
-     * @param int $window
-     * @throws \Exception
-     */
-    public static function check($key, $limit = 30, $window = 60)
-    {
-        if (!function_exists('apcu_fetch')) return;
-        $data = apcu_fetch($key);
-        $now = time();
-        if (!$data || $data['expires'] < $now) {
-            $data = ['count' => 1, 'expires' => $now + $window];
-        } else {
-            $data['count']++;
-        }
-        apcu_store($key, $data, $window);
-
-        if ($data['count'] > $limit) {
-            throw new \Exception('操作过于频繁，请稍后再试');
-        }
+    
+    private function calculateMemoryAdjustment(float $memoryUsage): float {
+        if ($memoryUsage > 0.8) return 0.6; // 高内存使用降低40%
+        if ($memoryUsage > 0.6) return 0.8; // 中等内存使用降低20%
+        if ($memoryUsage < 0.3) return 1.1; // 低内存使用增加10%
+        return 1.0; // 正常内存使用
     }
 }
+</fitten_content>

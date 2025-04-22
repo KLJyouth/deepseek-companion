@@ -247,7 +247,13 @@ final class CryptoHelper {
      * @return array{ciphertext:string, tag:string} 包含密文和认证标签的数组
      * @throws \RuntimeException 如果加密失败
      */
-    public static function encrypt($data): array {
+    const ENCRYPTION_METHOD = 'AES-256-CBC';  // 明确定义加密方法
+    
+    public static function encrypt($data) {
+        if (strlen(ENCRYPTION_KEY) !== 32) {
+            throw new Exception("Encryption key must be 32 characters");
+        }
+    
         if (!isset(self::$encryptionKey)) {
             throw new \RuntimeException('加密组件未初始化，请先调用init()');
         }

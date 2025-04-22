@@ -3,6 +3,8 @@ namespace Admin\Controllers;
 
 use Libs\DatabaseHelper;
 use Admin\Services\GeoThreatAnalyzer;
+use Admin\Services\SecurityService;  // 添加缺失的引用
+use Libs\SecurityAuditHelper;       // 添加缺失的引用
 
 class SecurityDashboardController {
     private $db;
@@ -84,5 +86,10 @@ class SecurityDashboardController {
              LIMIT ?",
             [['value' => $limit, 'type' => 'i']]
         );
+    }
+
+    public function checkServiceStatus($serviceName) {
+        // 修改为实际的状态检查逻辑
+        return SecurityService::getStatus($serviceName); 
     }
 }
