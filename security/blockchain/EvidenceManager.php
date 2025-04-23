@@ -3,7 +3,7 @@
  * EvidenceManager - 区块链证据管理核心组件
  *
  * 负责证据存证、验证、检索与合规管理
- * 该组件为DeepSeek Companion安全架构的创新核心，具备专利级安全与可扩展性设计
+ * 该组件为DeepSeek Companion安全架构的创新核心，具备独创级安全与可扩展性设计
  *
  * @package DeepSeek\Security\Blockchain
  * @author DeepSeek Security Team
@@ -21,7 +21,7 @@ use Exception;
  *
  * 支持证据上链、链上验证、合规存储与多维检索
  * 具备高安全性、可扩展性、可维护性、可移植性、可复用性、可测试性
- * 所有算法与接口均符合国际安全标准，创新性实现专利级区块链证据管理架构
+ * 所有算法与接口均符合国际安全标准，创新性实现独创级区块链证据管理架构
  */
 class EvidenceManager
 {

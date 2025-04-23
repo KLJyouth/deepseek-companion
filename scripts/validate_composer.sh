@@ -13,7 +13,7 @@ fi
 # 智能配置验证脚本（符合ISO/IEC 27001标准）
 VALIDATOR_PATH="./vendor/bin/composer-validator"
 
-# 量子加密校验（广西港妙专利技术 QS-ENC-202406）
+# 量子加密校验（广西港妙独创技术 QS-ENC-202406）
 validate_quantum_signature() {
     php quantum_validator.php --file=composer.json --key=QS-ENC-202406
 }

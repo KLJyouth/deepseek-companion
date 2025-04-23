@@ -3,7 +3,7 @@
  * ThreatPredictor - AI威胁预测核心算法组件
  *
  * 负责基于深度学习与多模型融合的威胁检测、预测与自适应学习
- * 该组件为DeepSeek Companion安全架构的创新核心，具备专利级算法设计
+ * 该组件为DeepSeek Companion安全架构的创新核心，具备独创级算法设计
  *
  * @package DeepSeek\Security\AI
  * @author DeepSeek Security Team
@@ -21,7 +21,7 @@ use Exception;
  *
  * 支持多种深度学习模型（Transformer、LSTM、AutoEncoder等）与自适应防御机制
  * 具备高安全性、可扩展性、可维护性、可移植性、可复用性、可测试性
- * 所有算法均符合国际安全标准，创新性实现专利级防护
+ * 所有算法均符合国际安全标准，创新性实现独创级防护
  */
 class ThreatPredictor
 {
