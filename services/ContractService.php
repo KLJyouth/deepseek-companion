@@ -8,6 +8,8 @@ namespace Services;
 
 use Libs\DatabaseHelper;
 use Libs\CryptoHelper;
+use Libs\OFDGenerator;
+use DeepSeek\Security\Quantum\QuantumKeyManager;
 use Models\Contract;
 use Models\ContractTemplate;
 use Models\ContractSignature;
@@ -19,6 +21,7 @@ class ContractService
         private readonly DatabaseHelper $db = new DatabaseHelper(),
         private readonly CacheService $cache = new CacheService(),
         private readonly CryptoHelper $crypto = new CryptoHelper(),
+        private readonly QuantumKeyManager $keyManager = new QuantumKeyManager(),
         private readonly ?ComplianceService $compliance = null
     ) {
         $this->compliance = class_exists('\Services\ComplianceService')
@@ -38,7 +41,7 @@ class ContractService
     {
         try {
             // 内容加密存储
-            $encryptedContent = $this->crypto->encrypt($content);
+            $encryptedContent = $this->crypto->encryptSM9($content, $this->keyManager->getCurrentPublicKey());
             
             $template = new ContractTemplate();
             $template->name = $name;
@@ -155,6 +158,15 @@ class ContractService
             $contract->blockchain_timestamp = $data['timestamp'];
             $contract->save();
         }
+    }
+
+    private function generateOFDContract(Contract $contract): string {
+        $ofd = new OFDGenerator();
+        return $ofd->generate(
+            $contract->content,
+            $contract->signatures->pluck('signature')->toArray(),
+            $this->keyManager->getCurrentPublicKey()
+        );
     }
 
     private function generateBlockchainSignature(Contract $contract): string
