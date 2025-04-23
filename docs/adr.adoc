@@ -1,0 +1,68 @@
+= 架构决策记录
+:doctype: book
+:toc: left
+:numbered:
+
+== 1. ADR-001：量子加密算法选型
+
+=== 1.1 决策背景
+* 需要抵抗量子计算攻击
+* 兼顾性能和安全性
+* 符合NIST后量子加密标准
+
+=== 1.2 考虑方案
+[options="header"]
+|===
+| 方案 | 优点 | 缺点
+| KYBER1024 | 性能好 | 密钥较大
+| NTRU | 安全性高 | 性能较低
+| Classic McEliece | 最安全 | 性能差
+|===
+
+=== 1.3 决策结果
+选择*KYBER1024*作为主要算法，原因：
+* 加解密性能满足金融级要求(1000+ TPS)
+* 已被NIST选为标准算法
+* 提供完善的密钥管理方案
+
+== 2. ADR-002：区块链多链架构
+
+=== 2.1 决策背景
+* 避免单链供应商锁定
+* 需要高可用存证方案
+* 支持不同业务场景
+
+=== 2.2 架构方案
+[graphviz]
+digraph {
+    node [shape=box];
+    Application -> Fabric [label="企业场景"];
+    Application -> Ethereum [label="公开验证"];
+    Application -> Hyperledger [label="合规场景"];
+}
+
+=== 2.3 实施要点
+* 统一抽象层接口
+* 支持动态链注册
+* 提供链健康监控
+
+== 3. ADR-003：零信任架构实施
+
+=== 3.1 核心原则
+* 持续验证
+* 最小权限
+* 设备认证
+
+=== 3.2 技术栈
+[source,plantuml]
+@startuml
+component "设备指纹" as fp
+component "行为分析" as ba
+component "策略引擎" as pe
+
+fp -> ba : 提供设备特征
+ba -> pe : 风险评估
+pe -> ba : 动态策略
+@enduml
+
+include::terminology.adoc[]

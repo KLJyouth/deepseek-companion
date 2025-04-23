@@ -1,0 +1,33 @@
+# 术语库定义
+version: 1.0
+updated: 2023-11-15
+
+terms:
+  - key: "quantum"
+    zh: "量子加密"
+    en: "Quantum Encryption"
+    ja: "量子暗号"
+    desc: "抵抗量子计算攻击的加密算法"
+    example: "使用量子加密(PQC)保护数据传输"
+
+  - key: "blockchain"
+    zh: "区块链存证" 
+    en: "Blockchain Notarization"
+    ja: "ブロックチェーン証明"
+    desc: "将操作哈希值写入区块链进行存证"
+    example: "关键操作需要区块链存证"
+
+  - key: "ztna"
+    zh: "零信任架构"
+    en: "Zero Trust Architecture"
+    ja: "ゼロトラストアーキテクチャ"
+    desc: "基于持续验证的安全架构"
+    example: "实施零信任架构需要设备认证"
+
+rules:
+  - pattern: "/PQC/"
+    note: "Post-Quantum Cryptography的缩写，需保留原文"
+  - pattern: "/API/"
+    note: "保持大写不变"
+  - pattern: "/[A-Z]{2,}/" 
+    note: "检查是否为专有名词缩写"

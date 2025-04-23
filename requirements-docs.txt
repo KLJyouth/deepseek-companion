@@ -1,0 +1,4 @@
+mkdocs==1.4.2
+mkdocs-material==9.0.13
+mkdocs-redirects==1.0.1
+mkdocs-git-revision-date-plugin==0.3.2

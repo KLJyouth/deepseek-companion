@@ -1,0 +1,71 @@
+= 功能指南总览
+:doctype: book
+:toc: left
+:toc-title: 功能分类
+
+== 1. 核心功能
+
+=== 1.1 量子加密(PQC)
+* link:quantum_encryption_guide.adoc[量子加密指南]
+* 算法支持：
+  ** KYBER1024
+  ** NTRU
+  ** 国密SM系列
+* 典型场景：
+  ** 金融交易加密
+  ** 密钥安全管理
+
+=== 1.2 区块链存证
+* link:blockchain_advanced.adoc[高级功能]
+* 支持链类型：
+  ** Hyperledger Fabric
+  ** Ethereum
+  ** 其他EVM兼容链
+* 应用案例：
+  ** 操作审计追踪
+  ** 合同存证
+
+== 2. 安全架构
+
+=== 2.1 零信任架构
+* link:ztna.adoc[实施指南]
+* 核心组件：
+  ** 设备指纹
+  ** 持续认证
+  ** 动态策略
+
+=== 2.2 安全监控
+* link:monitoring.adoc[配置手册]
+* 监控维度：
+  ** 异常行为检测
+  ** 威胁情报整合
+  ** 实时告警
+
+== 3. 典型场景
+
+=== 3.1 金融交易保护
+[graphviz]
+digraph {
+    node [shape=box];
+    "交易请求" -> "量子加密"
+    -> "区块链存证"
+    -> "实时监控";
+}
+
+=== 3.2 敏感数据处理
+[cols="1,2"]
+|===
+| 阶段 | 技术方案
+| 传输 | TLS 1.3 + 量子加密
+| 存储 | 国密SM4 + 密钥轮换
+| 使用 | 内存加密 + 安全沙箱
+|===
+
+== 4. 故障排查
+* link:troubleshooting.adoc[问题诊断手册]
+* 快速指南：
+  ** 加密失败：检查密钥状态
+  ** 存证延迟：验证链节点
+  ** 认证异常：查看设备指纹
+
+include::terminology.adoc[]

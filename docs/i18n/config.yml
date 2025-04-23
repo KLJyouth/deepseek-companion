@@ -1,0 +1,22 @@
+# 多语言配置
+default_locale: zh
+locales:
+  - zh: 简体中文
+  - en: English
+  - ja: 日本語
+
+translation:
+  backend: yaml
+  directories:
+    - locales
+    - ../shared/locales
+
+versioning:
+  enabled: true
+  versions:
+    - 1.0
+    - 2.0 (current)
+
+search:
+  provider: algolia
+  index_prefix: "stanfai_docs_"

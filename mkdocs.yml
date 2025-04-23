@@ -1,0 +1,39 @@
+site_name: Stanfai PHP 文档
+site_url: https://stanfai.github.io/stanfai-php/
+repo_url: https://github.com/stanfai/stanfai-php
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - toc.integrate
+  palette:
+    primary: deep purple
+    accent: amber
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+
+nav:
+  - 首页: index.md
+  - 快速开始:
+    - 安装指南: getting-started/installation.md
+    - 配置说明: getting-started/configuration.md
+  - 核心功能:
+    - 安全体系: features/security.md
+    - 性能优化: features/performance.md
+  - API参考:
+    - 加密服务: api/encryption.md
+    - 区块链集成: api/blockchain.md
+  - 开发指南:
+    - 贡献代码: development/contributing.md
+    - 行为准则: development/code-of-conduct.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/stanfai/stanfai-php

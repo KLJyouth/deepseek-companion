@@ -4,6 +4,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\SecurityController;
 use Illuminate\Support\Facades\Route;
+use Middlewares\PathValidationMiddleware;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,7 +24,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // 需要认证的路由
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', PathValidationMiddleware::class])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'dashboard'])->name('dashboard');
     
     // 安全相关路由 (需要管理员权限)

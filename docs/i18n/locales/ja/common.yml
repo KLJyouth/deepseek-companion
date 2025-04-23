@@ -1,0 +1,27 @@
+# 日本語翻訳ファイル
+# 最終更新: 2023-11-15
+
+common:
+  brand: "Stanfaiセキュリティフレームワーク"
+  docs: "ドキュメントセンター"
+  api: "APIリファレンス"
+  features: "機能ガイド"
+  examples: "インタラクティブデモ"
+
+security:
+  quantum: "量子暗号(PQC)"
+  blockchain: "ブロックチェーン証明"
+  ztna: "ゼロトラストアーキテクチャ"
+
+actions:
+  edit: "編集"
+  view: "表示" 
+  try: "実行"
+
+warnings:
+  sandbox: "デモ環境のみ。実際の機密データを入力しないでください"
+
+# 翻訳メモ:
+# 1. キー名はzh.ymlと一致させる
+# 2. 専門用語は英語表記を併記
+# 3. UIラベルは敬体を使用

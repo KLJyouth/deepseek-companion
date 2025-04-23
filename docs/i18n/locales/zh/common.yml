@@ -1,0 +1,22 @@
+# 简体中文翻译文件
+# 最后更新: 2023-11-15
+
+common:
+  brand: "Stanfai安全框架"
+  docs: "文档中心"
+  api: "API参考"
+  features: "功能指南"
+  examples: "交互示例"
+
+security:
+  quantum: "量子加密(PQC)"
+  blockchain: "区块链存证"
+  ztna: "零信任架构"
+
+actions:
+  edit: "编辑"
+  view: "查看"
+  try: "尝试运行"
+
+warnings:
+  sandbox: "沙箱环境仅用于演示，请勿输入真实敏感数据"

@@ -1,0 +1,47 @@
+= 交互式示例系统
+:doctype: book
+:toc:
+:experimental:
+
+== 1. 安全沙箱环境
+
+[source,bash]
+----
+# 启动沙箱环境
+docker-compose -f sandbox.yml up -d
+
+# 验证状态
+curl http://localhost:8080/status
+----
+
+=== 1.1 环境限制
+* 网络隔离：无外网连接
+* 资源限制：CPU 1核，内存 1GB
+* 自动销毁：2小时不活动后重置
+
+== 2. 示例列表
+
+=== 2.1 量子加密示例
+[source,php]
+----
+include::../examples/quantum_demo.php[]
+----
+.TryIt[点击运行]
+
+=== 2.2 区块链存证
+[source,php]
+----
+include::../examples/blockchain_demo.php[]
+----
+.TryIt[点击运行]
+
+== 3. 安全注意事项
+
+[WARNING]
+====
+* 沙箱环境仅包含模拟数据
+* 禁止输入真实敏感信息
+* 示例密钥每次运行自动生成
+====
+
+include::../terminology.adoc[]

@@ -1,0 +1,68 @@
+# 翻译质量评分标准
+version: 1.0
+
+# 评分维度
+dimensions:
+  - name: terminology
+    weight: 0.3
+    criteria:
+      - key: consistency
+        desc: "术语一致性"
+        max_score: 100
+      - key: glossary_match
+        desc: "术语库匹配度"
+        max_score: 100
+
+  - name: fluency
+    weight: 0.25  
+    criteria:
+      - key: grammar
+        desc: "语法正确性"
+        max_score: 100
+      - key: readability
+        desc: "阅读流畅度" 
+        max_score: 50
+
+  - name: accuracy
+    weight: 0.35
+    criteria:
+      - key: meaning
+        desc: "语义准确性"
+        max_score: 100
+      - key: completeness
+        desc: "内容完整性"
+        max_score: 50
+
+  - name: style
+    weight: 0.1
+    criteria:
+      - key: tone
+        desc: "语气风格匹配"
+        max_score: 50
+      - key: formatting
+        desc: "格式一致性"
+        max_score: 30
+
+# 评分等级
+levels:
+  - range: [90, 100]
+    label: "优秀"
+    action: "自动发布"
+  - range: [80, 90)
+    label: "良好"
+    action: "人工复核后发布"
+  - range: [70, 80)
+    label: "合格" 
+    action: "需要修改"
+  - range: [0, 70)
+    label: "不合格"
+    action: "拒绝并重新翻译"
+
+# 自动化工具配置
+tools:
+  - name: "LinguaCheck"
+    type: "automated"
+    dimensions: ["terminology", "formatting"]
+  - name: "HumanReview"
+    type: "manual"
+    dimensions: ["fluency", "accuracy", "style"]

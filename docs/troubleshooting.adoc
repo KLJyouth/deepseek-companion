@@ -1,0 +1,93 @@
+= 故障排查手册
+:doctype: book
+:toc: left
+:icons: font
+
+== 1. 加密服务问题
+
+=== 1.1 量子加密失败
+[cols="1,3"]
+|===
+| 现象 | 解决方案
+| 密钥生成慢 | 检查CPU是否支持AES-NI指令集
+| 解密验证失败 | 1. 验证密钥版本
+            | 2. 检查时钟同步
+| 性能下降 | 1. 启用硬件加速
+       | 2. 调整批量大小
+|===
+
+=== 1.2 国密算法异常
+```bash
+# 诊断步骤
+php artisan security:diagnose --algorithm=SM2
+
+# 预期输出
+SM2 Status: [OK]
+KeyStore: [Valid]
+```
+
+== 2. 区块链存证问题
+
+=== 2.1 存证延迟
+[graphviz]
+digraph {
+    node [shape=box];
+    "存证队列" -> "链节点状态"
+    -> "网络延迟" -> "解决方案";
+}
+
+* 解决方案：
+  ```bash
+  # 检查链节点
+  curl -X GET ${CHAIN_NODE}/health
+  ```
+
+=== 2.2 多链不一致
+1. 获取各链存证：
+   ```php
+   $evidence = $verifier->getMultiChainEvidence($txId);
+   ```
+2. 比较关键字段：
+   ```diff
+   - Fabric: {timestamp: 123, hash: "abc"}
+   + Ethereum: {timestamp: 124, hash: "abc"}
+   ```
+
+== 3. 零信任认证问题
+
+=== 3.1 设备验证失败
+[cols="1,1,2"]
+|===
+| 错误码 | 可能原因 | 解决步骤
+| DEVICE_INVALID | 设备指纹变化 | 1. 重新注册设备
+| POLICY_DENIED | 位置/IP变更 | 申请临时访问
+|===
+
+=== 3.2 持续认证超时
+```yaml
+# 调整配置
+authentication:
+  timeout: 30000 # 延长超时(ms)
+  heartbeat: 5000 # 缩短心跳间隔
+```
+
+== 4. 应急恢复流程
+
+1. 服务降级指南：
+   ```plantuml
+   @startuml
+   if "加密服务不可用?" then
+     ->[是] 启用兼容模式;
+   else
+     ->[否] 正常流程;
+   endif
+   @enduml
+   ```
+
+2. 关键命令：
+   ```bash
+   # 紧急密钥轮换
+   php artisan security:rotate --emergency
+   ```
+
+include::../terminology.adoc[]

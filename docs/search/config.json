@@ -1,0 +1,22 @@
+{
+  "index_name": "stanfai_docs",
+  "start_urls": [
+    "https://docs.stanfai.org"
+  ],
+  "selectors": {
+    "lvl0": ".content h1",
+    "lvl1": ".content h2",
+    "lvl2": ".content h3",
+    "text": ".content p, .content li"
+  },
+  "scrape_start_urls": false,
+  "strip_chars": " .,;:#",
+  "algolia": {
+    "appId": "YOUR_APP_ID",
+    "apiKey": "YOUR_API_KEY",
+    "indexName": "stanfai_docs"
+  },
+  "sitemap_urls": [
+    "https://docs.stanfai.org/sitemap.xml"
+  ]
+}

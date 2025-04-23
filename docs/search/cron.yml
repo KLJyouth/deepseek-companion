@@ -1,0 +1,26 @@
+# 搜索索引更新任务配置
+version: 1.0
+
+jobs:
+  update_index:
+    name: "更新文档搜索索引"
+    schedule: "0 */4 * * *" # 每4小时运行
+    command: "node update-index.js"
+    environments:
+      production:
+        app_id: ${PROD_ALGOLIA_APP_ID}
+        api_key: ${PROD_ALGOLIA_API_KEY}
+      staging:
+        app_id: ${STAGING_ALGOLIA_APP_ID}
+        api_key: ${STAGING_ALGOLIA_API_KEY}
+    notifications:
+      slack: ${SLACK_WEBHOOK}
+      email: docs-alerts@stanfai.org
+
+retry:
+  attempts: 3
+  delay: 30000 # 30秒重试间隔
+
+logging:
+  level: verbose
+  path: ./logs/search-index.log

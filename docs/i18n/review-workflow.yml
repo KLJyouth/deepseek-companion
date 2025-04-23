@@ -1,0 +1,55 @@
+# 翻译审核工作流
+version: 1.0
+
+# 审核阶段
+stages:
+  - name: "初步审核"
+    reviewers: ["translators"]
+    required: 1
+    criteria: ["terminology", "formatting"]
+    actions:
+      - request_changes
+      - approve
+      - escalate
+
+  - name: "专业审核"
+    reviewers: ["subject_matter"]
+    required: 2  
+    criteria: ["accuracy", "completeness"]
+    conditions:
+      - "初步审核.approved"
+
+  - name: "最终发布"
+    reviewers: ["l10n_managers"]
+    required: 1
+    conditions:
+      - "专业审核.approved"
+
+# 审核工具
+tools:
+  diff:
+    engine: "git-diff"
+    options:
+      ignore_whitespace: true
+      color_output: true
+
+  comments:
+    provider: "github"
+    resolvable: true
+    threading: true
+
+# 通知配置
+notifications:
+  - type: "email"
+    template: "review_request"
+    recipients: ["${reviewer_email}"]
+  - type: "slack"
+    channel: "#l10n-reviews"
+    events: ["stage_change"]
+
+# 紧急流程
+emergency:
+  bypass_approval: ["l10n_managers"]
+  rollback:
+    automatic: true
+    threshold: ">5% errors"

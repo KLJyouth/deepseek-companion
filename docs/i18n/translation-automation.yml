@@ -1,0 +1,45 @@
+# 翻译自动化配置
+version: 2.0
+
+# 机器翻译预处理
+machine_translation:
+  enable: true
+  provider: deepL
+  api_key: ${DEEPL_KEY}
+  rules:
+    - pattern: "/[A-Z]{2,}/"  # 保留大写缩写
+      action: "preserve"
+    - pattern: "/`.*?`/"       # 保留代码块
+      action: "skip"
+    - pattern: "/https?:\/\//" # 保留URL
+      action: "preserve"
+
+# 翻译记忆库
+translation_memory:
+  path: ./tm.db
+  sync:
+    - provider: crowdin
+      project_id: ${CROWDIN_PROJECT}
+    - provider: lokalise
+      api_key: ${LOKALISE_KEY}
+
+# 质量检查
+quality_checks:
+  - name: terminology
+    level: error
+    threshold: 98%
+  - name: placeholders
+    level: error
+    threshold: 100%
+  - name: completeness
+    level: warning
+    threshold: 90%
+
+# 工作流集成
+integrations:
+  - type: github
+    events: [push, pull_request]
+  - type: slack
+    channel: "#translations"
+  - type: jira
+    project: "DOCL10N"

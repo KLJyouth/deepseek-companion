@@ -1,0 +1,27 @@
+# English Translation
+# Last Updated: 2023-11-15
+
+common:
+  brand: "Stanfai Security Framework"
+  docs: "Documentation"
+  api: "API Reference"
+  features: "Features Guide"
+  examples: "Interactive Examples"
+
+security:
+  quantum: "Quantum Encryption(PQC)"
+  blockchain: "Blockchain Notarization"
+  ztna: "Zero Trust Architecture"
+
+actions:
+  edit: "Edit"
+  view: "View"
+  try: "Try it"
+
+warnings:
+  sandbox: "Sandbox environment for demo only. Do not enter real sensitive data."
+
+# Translation Notes:
+# 1. Keep key names consistent with zh.yml
+# 2. Use (PQC) for Post-Quantum Cryptography
+# 3. Use title case for UI labels

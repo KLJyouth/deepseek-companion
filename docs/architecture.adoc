@@ -1,0 +1,44 @@
+= 文档体系架构
+:doctype: book
+:toc: left
+:toclevels: 3
+
+== 1. 文档结构
+[graphviz]
+digraph doc_architecture {
+    rankdir=LR;
+    node [shape=box];
+    
+    "README.md" -> {"API参考" "功能指南" "部署手册"};
+    "API参考" -> {"加密API" "区块链API" "监控API"};
+    "功能指南" -> {"量子加密" "零信任架构" "区块链高级"};
+    "部署手册" -> {"单机部署" "集群部署" "混合云"};
+}
+
+== 2. 核心文档
+
+=== 2.1 API参考
+include::api.adoc[]
+
+=== 2.2 功能指南
+include::features.adoc[]
+
+=== 2.3 运维手册
+include::operations.adoc[]
+
+== 3. 辅助文档
+
+=== 3.1 术语表
+include::terminology.adoc[]
+
+=== 3.2 架构决策
+include::adr.adoc[]
+
+== 4. 多语言支持
+[cols="1,1,1"]
+|===
+| 文档 | 中文状态 | 英文状态
+| README | 完成 | 待翻译
+| API参考 | 完成 | 进行中
+| 功能指南 | 完成 | 待翻译
+|===

@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  sandbox:
+    image: stanfai/php-sandbox:8.1
+    environment:
+      SANDBOX_MODE: "true"
+      RESOURCE_LIMIT: "1"
+    ports:
+      - "8080:8080"
+    networks:
+      - sandbox-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1GB
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/status"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  fabric-sandbox:
+    image: hyperledger/fabric-peer:2.4
+    networks:
+      - sandbox-net
+    environment:
+      CORE_PEER_ID: "sandbox-peer"
+      CORE_PEER_ADDRESS: "fabric-sandbox:7051"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  ganache:
+    image: trufflesuite/ganache:7.0
+    networks:
+      - sandbox-net
+    ports:
+      - "7545:7545"
+    command: ["--wallet.deterministic"]
+
+networks:
+  sandbox-net:
+    driver: bridge
+    internal: true
+
+volumes:
+  sandbox-tmp:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+</content>
+</write_to_file>
+
+#上一步操作的结果
+成功写入文件：Stanfai_php/docs/examples/sandbox.yml
+
+<thinking>
+沙箱环境配置已创建，现在需要：
+
+1. **添加管理脚本**：
+   - 环境启动/停止脚本
+   - 状态检查工具
+   - 数据清理工具
+
+2. **完善文档说明**：
+   - 沙箱使用指南
+   - 安全注意事项
+   - 自定义配置说明
+
+3. **验证配置有效性**：
+   - 测试服务启动
+   - 检查网络隔离
+   - 验证资源限制
+
+首先创建沙箱管理脚本。
+</thinking>
+
+<write_to_file>
+<path>Stanfai_php/docs/examples/sandbox-manage.sh</path>
+<content><![CDATA[#!/bin/bash
+
+# 沙箱管理脚本
+
+function start_sandbox() {
+    echo "启动沙箱环境..."
+    docker-compose -f sandbox.yml up -d
+    
+    echo -n "等待服务就绪"
+    until curl -s http://localhost:8080/status >/dev/null; do
+        echo -n "."
+        sleep 1
+    done
+    echo -e "\n沙箱环境已就绪"
+}
+
+function stop_sandbox() {
+    echo "停止沙箱环境..."
+    docker-compose -f sandbox.yml down
+    echo "已清理沙箱资源"
+}
+
+function clean_sandbox() {
+    echo "清理临时数据..."
+    docker volume rm -f $(docker volume ls -q --filter name=stanfai)
+    echo "临时数据已清除"
+}
+
+case "$1" in
+    start)
+        start_sandbox
+        ;;
+    stop)
+        stop_sandbox
+        ;;
+    clean)
+        clean_sandbox
+        ;;
+    *)
+        echo "用法: $0 {start|stop|clean}"
+        exit 1
+esac
+</content>
+</write_to_file>

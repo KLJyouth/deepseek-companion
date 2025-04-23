@@ -1,134 +1,106 @@
-# 量子加密指南
+# 量子加密(PQC)与国密算法指南
 
 ## 1. 概述
-stanfai-司单服Ai智能安全法务系统采用量子混合加密方案，结合Kyber1024算法和AES-256加密，提供后量子时代的安全保障。
+Stanfai PHP支持以下加密标准：
+- **量子安全加密(PQC)**：KYBER1024, NTRU
+- **国密算法**：SM2, SM3, SM4
+- **传统算法**：AES-256, RSA-4096
 
-## 2. 系统要求
-- PHP 8.0+
-- pqcrypto扩展
-- OpenSSL 1.1.1+
-- 支持Kyber1024算法的服务器
+## 2. 国密算法集成
 
-## 3. 安装配置
-### 3.1 安装pqcrypto扩展
-```bash
-pecl install pqcrypto
-```
-
-### 3.2 配置PHP
-```ini
-extension=pqcrypto.so
-```
-
-## 4. 使用指南
-### 4.1 初始化量子密钥
+### 2.1 SM2非对称加密
 ```php
-use Libs\CryptoHelper;
+use Security\ChineseSM\SM2;
 
-// 初始化量子密钥对(自动根据风险等级设置有效期)
-CryptoHelper::initPQC();
+// 初始化
+$sm2 = new SM2();
+$keypair = $sm2->generateKeyPair();
 
-// 获取当前密钥有效期(秒)
-$ttl = CryptoHelper::getKeyTTL();
+// 加密/解密
+$encrypted = $sm2->encrypt($data, $keypair['public_key']);
+$decrypted = $sm2->decrypt($encrypted, $keypair['private_key']);
+
+// 签名/验证
+$signature = $sm2->sign($data, $keypair['private_key']);
+$isValid = $sm2->verify($data, $signature, $keypair['public_key']);
 ```
 
-### 4.2 AI驱动的密钥管理
-系统会根据实时风险等级自动调整密钥策略：
-
-| 风险等级 | 密钥有效期 | 适用场景 |
-|---------|-----------|---------|
-| 1(低)  | 24小时    | 常规操作 |
-| 2(中低) | 12小时    | 敏感操作 |
-| 3(中)  | 8小时     | 外部接口 |
-| 4(中高) | 6小时     | 金融交易 |
-| 5(高)  | 1小时     | 核心系统 |
-
-密钥生成事件会自动记录到区块链存证系统。
-
-### 4.3 密钥轮换策略
-```mermaid
-sequenceDiagram
-    监控系统->>+密钥服务: 检测风险等级变化
-    密钥服务->>密钥服务: 评估密钥轮换需求
-    密钥服务->>+区块链: 生成新密钥对
-    区块链-->>-密钥服务: 返回密钥指纹
-    密钥服务->>+数据库: 安全存储新密钥
-    数据库-->>-密钥服务: 确认存储
-    密钥服务->>+客户端: 推送密钥更新
-    客户端-->>-密钥服务: 确认接收
-```
-
-## 5. 混合加密流程
-### 5.1 加密过程
-1. 生成随机AES-256密钥
-2. 用量子公钥加密AES密钥
-3. 用AES密钥加密数据
-4. 组合传输加密数据和密钥
-
-### 5.2 解密过程
-1. 分离加密数据和密钥
-2. 用量子私钥解密AES密钥
-3. 用AES密钥解密数据
-
-### 5.3 性能优化
-- 批量处理数据减少密钥操作
-- 缓存常用数据的加密结果
-- 异步执行高开销的量子运算
-
-### 4.2 量子加密数据
+### 2.2 SM3哈希算法
 ```php
-$sensitiveData = ['user' => 'admin', 'access' => 'high'];
-$encrypted = CryptoHelper::quantumEncrypt(json_encode($sensitiveData));
+use Security\ChineseSM\SM3;
+
+$hasher = new SM3();
+$hash = $hasher->hash($data); // 返回64位十六进制字符串
 ```
 
-### 4.3 量子解密数据
+### 2.3 SM4对称加密
 ```php
-$decrypted = CryptoHelper::quantumDecrypt($encrypted);
-$data = json_decode($decrypted, true);
+use Security\ChineseSM\SM4;
+
+$sm4 = new SM4();
+$encrypted = $sm4->encrypt($data, $key);
+$decrypted = $sm4->decrypt($encrypted, $key);
 ```
 
-## 5. API集成
-### 5.1 请求示例
-```javascript
-// 参见API文档的量子加密部分
-```
+## 3. 量子安全加密(PQC)
 
-### 5.2 响应处理
-```javascript
-if(response.data.encryption === 'quantum') {
-    // 特殊处理量子加密数据
-}
-```
-
-## 6. 最佳实践
-1. **密钥管理**:
-   - 不同安全域使用独立密钥
-   - 密钥生命周期不超过24小时
-   - 废弃密钥安全销毁
-
-2. **性能优化**:
-   - 非敏感数据使用传统加密
-   - 启用硬件加速(如QAT)
-   - 监控加密延迟指标
-
-3. **安全审计**:
-   - 记录所有密钥操作
-   - 定期验证加密完整性
-   - 实施多因素密钥访问控制
-
-## 7. 常见问题
-### Q1: 量子加密性能如何？
-A: 混合加密方案平衡了安全性和性能，实测吞吐量约为纯AES加密的85%
-
-### Q2: 如何验证量子加密是否正常工作？
-A: 使用健康检查接口：
+### 3.1 KYBER1024算法
 ```php
-$status = CryptoHelper::healthCheck();
-if($status['quantum']['status'] === 'healthy') {
-    // 量子加密功能正常
-}
+use Security\Quantum\KYBER1024;
+
+$kyber = new KYBER1024();
+$keypair = $kyber->generateKeyPair();
+
+// 密钥封装
+$encapsulated = $kyber->encapsulate($keypair['public_key']);
+$secret = $kyber->decapsulate($encapsulated, $keypair['private_key']);
 ```
 
-## 8. 更多资源
-- [Kyber算法白皮书](https://pq-crystals.org/kyber/)
-- [NIST后量子加密标准](https://csrc.nist.gov/projects/post-quantum-cryptography)
+### 3.2 NTRU算法
+```php
+use Security\Quantum\NTRU;
+
+$ntru = new NTRU();
+$encrypted = $ntru->encrypt($data, $public_key);
+$decrypted = $ntru->decrypt($encrypted, $private_key);
+```
+
+## 4. 混合加密方案
+
+### 4.1 国密+量子加密
+```php
+// 使用SM2交换密钥，KYBER1024加密数据
+$sm2 = new SM2();
+$kyber = new KYBER1024();
+
+// 密钥交换
+$sessionKey = $sm2->keyExchange($remotePublicKey, $localPrivateKey);
+
+// 数据加密
+$encryptedData = $kyber->encrypt($data, $sessionKey);
+```
+
+## 5. 性能优化
+
+### 5.1 硬件加速
+```php
+// 启用AES-NI和SHA指令集
+$crypto->useHardwareAcceleration(true);
+
+// 专用加密卡支持
+$crypto->useHSM('nfast://hsm-server');
+```
+
+### 5.2 批量操作
+```php
+// 批量加密(减少上下文切换)
+$batch = new CryptoBatch();
+$batch->add($data1)->add($data2);
+$results = $batch->encrypt();
+
+// 并行处理
+$pool = new CryptoThreadPool(4);
+$pool->submit($encryptJob);
+```
+
+[返回术语规范](../terminology.md) | [查看API参考](../api/encryption.md)

@@ -1,0 +1,41 @@
+# 翻译工作流配置
+version: 1.0
+
+# 翻译状态跟踪
+tracking:
+  source: zh
+  target_languages: [en, ja]
+  last_updated: 2023-11-15
+
+# 术语一致性检查
+terminology:
+  base_language: zh
+  glossary: 
+    path: ./glossary.yml
+    required: true
+
+# 自动翻译工具
+tools:
+  - name: Google Translate
+    enabled: false
+    api_key: ${GT_KEY}
+  - name: DeepL
+    enabled: false
+    api_key: ${DL_KEY}
+
+# 质量检查
+quality:
+  checks:
+    - type: completeness
+      threshold: 95%
+    - type: terminology
+      threshold: 98%
+    - type: placeholder
+      threshold: 100%
+
+# 通知设置
+notifications:
+  slack:
+    webhook: ${SLACK_WEBHOOK}
+  email:
+    recipients: [docs-team@stanfai.org]

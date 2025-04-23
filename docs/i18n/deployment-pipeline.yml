@@ -1,0 +1,65 @@
+# 多语言文档持续交付
+version: 2.0
+
+# 构建阶段
+build:
+  steps:
+    - name: "提取源文本"
+      command: "npm run extract-strings"
+      outputs: ["./i18n/sources"]
+
+    - name: "机器翻译预处理"
+      command: "npm run mt-pretranslate"
+      inputs: ["./i18n/sources"]
+      outputs: ["./i18n/pretranslated"]
+      condition: "${ENABLE_MT}"
+
+    - name: "术语一致性检查"
+      command: "npm run check-terms"
+      inputs: ["./i18n/pretranslated"]
+      fail_on: "terminology < 95%"
+
+# 质量门禁
+quality_gates:
+  - stage: "pre-build"
+    checks:
+      - type: "completeness"
+        threshold: ">= 98%"
+      - type: "placeholders"
+        threshold: "100%"
+
+  - stage: "post-translation"
+    checks:
+      - type: "terminology"
+        threshold: ">= 95%"
+      - type: "fluency"
+        threshold: ">= 85%"
+
+# 部署流程
+deploy:
+  strategy: "blue-green"
+  targets:
+    - env: "production"
+      url: "https://docs.stanfai.org"
+      sync: true
+    - env: "staging"
+      url: "https://stage.docs.stanfai.org"
+
+# 回滚配置
+rollback:
+  automatic: true
+  triggers:
+    - "error_rate > 5%"
+    - "load_time > 3s"
+  steps:
+    - "切换至上一版本"
+    - "发送告警通知"
+
+# 监控配置
+monitoring:
+  dashboards:
+    - url: "https://grafana.stanfai.org/d/l10n"
+  alerts:
+    - type: "error_rate"
+      threshold: ">1%"
+      channels: ["slack", "email"]

@@ -2,6 +2,15 @@
 require_once 'config.php';
 require_once 'middlewares/AuthMiddleware.php';
 
+// 初始化安全服务
+require_once __DIR__.'/app/Providers/SecurityServiceProvider.php';
+$securityProvider = new App\Providers\SecurityServiceProvider();
+$securityProvider->register();
+
+// 获取加密服务实例
+$pathEncryptor = $securityProvider->getApp()->make(\Security\Path\PathEncryptionService::class);
+define('PATH_ENCRYPTOR', $pathEncryptor);
+
 // 检查登录状态
 $isLoggedIn = \Libs\AuthMiddleware::checkAuth();
 $username = isset($_SESSION['username']) ? $_SESSION['username'] : '';

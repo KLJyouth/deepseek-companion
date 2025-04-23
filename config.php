@@ -63,6 +63,8 @@ foreach (REQUIRED_DIRS as $dir => $perms) {
 // ========== 加密配置 ==========
 require_once ROOT_PATH . '/libs/CryptoHelper.php';
 define('ENCRYPTION_METHOD', env('ENCRYPTION_METHOD', 'quantum'));
+
+// 主加密密钥
 if (!defined('ENCRYPTION_KEY')) {
     $key = env('ENCRYPTION_KEY', bin2hex(random_bytes(16)));
     if (strlen($key) !== 32) {
@@ -70,6 +72,15 @@ if (!defined('ENCRYPTION_KEY')) {
     }
     define('ENCRYPTION_KEY', $key);
 }
+
+// 量子加密专用配置
+if (!defined('QUANTUM_ENCRYPTION_KEY')) {
+    $qkey = env('QUANTUM_ENCRYPTION_KEY', bin2hex(random_bytes(32)));
+    define('QUANTUM_ENCRYPTION_KEY', $qkey);
+}
+define('QUANTUM_KEY_ROTATION_INTERVAL', env('QUANTUM_KEY_ROTATION_INTERVAL', 86400)); // 24小时
+define('QUANTUM_KEY_VERSIONS_TO_KEEP', env('QUANTUM_KEY_VERSIONS_TO_KEEP', 3));
+define('QUANTUM_ALGORITHM', env('QUANTUM_ALGORITHM', 'KYBER1024-AES256'));
 if (strlen(ENCRYPTION_KEY) !== 32) {
     throw new \RuntimeException('ENCRYPTION_KEY必须为32字节');
 }

@@ -1,0 +1,94 @@
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  // 基础配置
+  gtag('config', 'GA_MEASUREMENT_ID', {
+    'page_title': document.title,
+    'page_path': window.location.pathname,
+    'custom_map': {
+      'dimension1': 'doc_version',
+      'dimension2': 'doc_language'
+    }
+  });
+
+  // 文档特定事件跟踪
+  function trackDocumentEvents() {
+    // 阅读深度跟踪
+    const content = document.querySelector('.content');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const section = entry.target.id || entry.target.dataset.section;
+          gtag('event', 'read_section', {
+            'section_name': section,
+            'percent_viewed': Math.round(entry.intersectionRatio * 100)
+          });
+        }
+      });
+    }, {threshold: [0.1, 0.5, 1.0]});
+
+    // 跟踪所有h2/h3标题
+    document.querySelectorAll('h2, h3').forEach(heading => {
+      observer.observe(heading);
+    });
+
+    // 搜索事件跟踪
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', debounce(() => {
+        gtag('event', 'search', {
+          'search_term': searchInput.value,
+          'search_results': document.querySelectorAll('.search-result').length
+        });
+      }, 500));
+    }
+  }
+
+  // 防抖函数
+  function debounce(func, delay) {
+    let timeout;
+    return function() {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, arguments), delay);
+    };
+  }
+
+  // 页面加载后启动跟踪
+  if (document.readyState === 'complete') {
+    trackDocumentEvents();
+  } else {
+    window.addEventListener('load', trackDocumentEvents);
+  }
+</script>
+
+<!-- 辅助功能检查 -->
+<script>
+  // 检查颜色对比度
+  function checkAccessibility() {
+    const elements = document.querySelectorAll('p, h1, h2, h3, li');
+    elements.forEach(el => {
+      const bgColor = getComputedStyle(el).backgroundColor;
+      const textColor = getComputedStyle(el).color;
+      const contrast = getContrast(bgColor, textColor);
+      
+      if (contrast < 4.5) {
+        console.warn('低对比度:', el, contrast);
+      }
+    });
+  }
+
+  // 简化版对比度计算
+  function getContrast(bg, fg) {
+    // 实际实现应使用完整对比度算法
+    return 4.5; // 示例值
+  }
+
+  // 屏幕阅读器检测
+  if (window.speechSynthesis) {
+    document.documentElement.setAttribute('data-tts', 'available');
+  }
+</script>
