@@ -15,16 +15,13 @@
         "ext-redis": "*",
         "monolog/monolog": "^2.8",
         "symfony/process": "^6.4",
-        "endroid/qr-code": "^4.8",
-        "ext-pdo": "*",
-        "ext-gd": "*"
+        "endroid/qrcode": "^4.8"
     },
     "suggest": {
         "ext-posix": "在Linux环境中用于进程管理和安全控制"
     },
     "autoload": {
         "psr-4": {
-            "traits\\": "traits/",
             "Services\\": "services/"
         }
     },

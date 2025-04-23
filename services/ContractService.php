@@ -67,7 +67,10 @@ class ContractService
      * @return array{success:bool,error?:string} 签署结果
      * @throws RuntimeException 当签名或保存失败时
      */
-    public function signContract(int $contractId, int $userId, string $signatureData, string $algorithm = 'RSA-SHA512'): array
+    public function signContract(int $contractId, int $userId, string $signatureData, string $algorithm = 'SM9'): array
+    {
+        // 绑定量子密钥指纹
+        $quantumKeyId = $this->keyManager->getCurrentKeyId();
     {
         try {
             // 验证合同状态
@@ -82,6 +85,11 @@ class ContractService
             $signature->user_id = $userId;
             $signature->signature = $this->crypto->encrypt($signatureData);
             $signature->algorithm = $algorithm;
+            $signature->quantum_key_id = $quantumKeyId;
+            $signature->sm9_params = json_encode([
+                'master_public' => $this->keyManager->getMasterPublicKey(),
+                'key_expire' => $this->keyManager->getKeyExpiration()
+            ]);
             
             if (!$signature->save()) {
                 throw new RuntimeException('签名保存失败');
