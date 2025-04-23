@@ -298,7 +298,7 @@ EOT;
         }
         
         $answer = trim(fgets(STDIN));
-        return $answer !== '' ? $default;
+        return $answer ?: $default;  // 修复这里的返回语句
     }
 
     private function confirm(string $question, bool $default = true): bool {
@@ -490,12 +490,17 @@ PHP;
 }
 
 // 命令行参数解析
+if (!isset($argv)) {
+    // 非命令行环境时提供默认值
+    $argv = [];
+}
+
 $options = [
-    'interactive' => !in_array('--no-interactive', $argv),
+    'interactive' => PHP_SAPI === 'cli' ? !in_array('--no-interactive', $argv) : true,
     'skip-db' => in_array('--skip-db', $argv),
     'optimize' => !in_array('--no-optimize', $argv),
     'with-monitoring' => !in_array('--no-monitoring', $argv),
-    'parallel' => (int)($argv[array_search('--parallel', $argv) + 1] ?? 4)
+    'parallel' => PHP_SAPI === 'cli' ? (int)($argv[array_search('--parallel', $argv) + 1] ?? 4) : 4
 ];
 
 // 执行安装
