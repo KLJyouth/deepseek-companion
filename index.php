@@ -12,7 +12,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek 智慧法务系统</title>
+    <title>Stanfai 智慧法务系统</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/style.css" rel="stylesheet">
@@ -24,7 +24,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
 <body>
     <header class="main-header">
         <nav class="nav-container">
-            <div class="logo">DeepSeek 智慧法务</div>
+            <div class="logo">Stanfai 智慧法务</div>
             <div class="nav-links">
                 <a href="#services">法律服务</a>
                 <a href="#compliance">智能合规</a>
@@ -184,7 +184,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
         <div class="footer-content">
             <div class="footer-section">
                 <h4>关于我们</h4>
-                <p>DeepSeek智慧法务系统致力于为企业提供智能化法务解决方案</p>
+                <p>Stanfai智慧法务系统致力于为企业提供智能化法务解决方案</p>
             </div>
             <div class="footer-section">
                 <h4>联系方式</h4>
@@ -199,7 +199,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'guest';
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; <?php echo date('Y'); ?> DeepSeek 智慧法务系统. All rights reserved.</p>
+            <p>&copy; <?php echo date('Y'); ?> Stanfai 智慧法务系统. All rights reserved.</p>
         </div>
     </footer>
 

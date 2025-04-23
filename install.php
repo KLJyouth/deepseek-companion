@@ -1,4 +1,7 @@
 <?php
+// 加载Composer自动加载器
+require_once __DIR__ . '/vendor/autoload.php';
+
 namespace Services;
 
 use Symfony\Component\Process\Process;

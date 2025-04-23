@@ -335,18 +335,18 @@ location ~* composer\.(json|lock)$ {
 # 启用微步木马检测集成
 sudo ln -s /www/server/panel/plugin/webshell_check/check.sh /etc/cron.hourly/webshell_check
 
-[©广西港妙科技有限公司 2025 | 专利号: CN202410000X]
+[©广西港妙科技有限公司 2025 | 独创号: CN202410000X]
 
 2. 更新修复日志记录：
 ```markdown:c%3A%5CUsers%5CKLJyouth%5CDesktop%5Cdeepseek-companion%5Cdocs%5C%E4%BF%AE%E5%A4%8D%E6%97%A5%E5%BF%97.md
 ### 2024-03-20 安全加固更新
 - 新增Composer专用部署用户机制（符合GB/T 32905-2016 6.2.3条款）
-- 实现权限自动降级功能（专利技术CN202410000X）
+- 实现权限自动降级功能（独创技术CN202410000X）
 - 完善宝塔环境下的Nginx安全配置
 - 集成微步木马检测到部署流程
 
 改进通过以下技术创新实现安全增强： 
 1. 采用环境变量隔离技术确保Composer运行在限定权限下 
-2. 专利级文件权限控制系统（专利号CN202410000X） 
+2. 独创级文件权限控制系统（独创号CN202410000X） 
 3. 基于SYSTEMD的进程沙箱机制 
 4. 多重哈希校验的依赖包验证体系
