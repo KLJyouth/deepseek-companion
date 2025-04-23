@@ -1,8 +1,8 @@
 <?php
-namespace Models;
+namespace App\Models;
 
-use Libs\DatabaseHelper;
-use Libs\LogHelper;
+use App\Libs\DatabaseHelper;
+use App\Libs\LogHelper;
 
 abstract class BaseModel
 {

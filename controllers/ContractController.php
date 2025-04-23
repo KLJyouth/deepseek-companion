@@ -1,16 +1,18 @@
 <?php
-namespace Controllers;
+namespace App\Controllers;
 
-use Libs\AuthMiddleware;
-use Libs\CryptoHelper;
-use Libs\DatabaseHelper;
-use Libs\Exception\SecurityException;
+use App\Libs\AuthMiddleware;
+use App\Libs\CryptoHelper;
+use App\Libs\DatabaseHelper;
+use App\Libs\Exception\SecurityException;
+use App\Services\ApiSignService;
+use App\Services\ContractService;
 
 class ContractController {
     private $signService;
     
     public function __construct() {
-        $this->signService = new \Services\ApiSignService();
+        $this->signService = new ApiSignService();
     }
     
     // 合同模板管理

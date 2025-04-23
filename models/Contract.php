@@ -1,11 +1,11 @@
 <?php
-namespace Models;
+namespace App\Models;
 
-require_once __DIR__.'/../../traits/InputValidation.php';
-require_once __DIR__.'/ContractSignature.php';
-use Traits\InputValidation;
-use Models\BaseModel;
-use Models\ContractSignature;
+use App\Traits\InputValidation;
+use App\Models\BaseModel;
+use App\Models\ContractSignature;
+use InvalidArgumentException;
+use RuntimeException;
 
 class Contract extends BaseModel
 {

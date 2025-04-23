@@ -1,8 +1,8 @@
 <?php
-namespace Services;
+namespace App\Services;
 
-use Libs\CryptoHelper;
-use Libs\ConfigHelper;
+use App\Libs\CryptoHelper;
+use App\Libs\ConfigHelper;
 use Exception;
 
 class ApiSignService {

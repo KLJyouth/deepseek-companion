@@ -1,13 +1,16 @@
 <?php
-namespace Services;
+namespace App\Services;
+
+use App\Libs\DatabaseHelper;
+use Redis;
 
 class AdvancedAnalyticsService {
     private $redis;
     private $db;
     
     public function __construct() {
-        $this->redis = new \Redis();
-        $this->db = \Libs\DatabaseHelper::getInstance();
+        $this->redis = new Redis();
+        $this->db = DatabaseHelper::getInstance();
     }
 
     public function analyzePerformanceTrends(array $metrics): array {

@@ -14,4 +14,9 @@
 [2025-04-21 22:18:54] Exception: 数据库连接失败(主机:localhost 用户:roots): Access denied for user 'roots'@'localhost' (using password: YES)
 #0 C:\Users\KLJyouth\Desktop\deepseek-companion\config.php(328): Libs\initializeDatabaseConnection()
 #1 C:\Users\KLJyouth\Desktop\deepseek-companion\index.php(2): require_once('...')
+#2 {main}[23-Apr-2025 15:03:13 UTC] [2025-04-23 15:03:13] Exception: Class "mysqli" not found in C:\Users\KLJyouth\Desktop\Stanfai_all\Stanfai_php\config.php:305
+Stack Trace:
+#0 C:\Users\KLJyouth\Desktop\Stanfai_all\Stanfai_php\config.php(339): Libs\initializeDatabaseConnection()
+#1 C:\Users\KLJyouth\Desktop\Stanfai_all\Stanfai_php\index.php(2): require_once('...')
 #2 {main}
+[23-Apr-2025 15:03:13 UTC] [2025-04-23 15:03:13] Warning: readfile(C:\Users\KLJyouth\Desktop\Stanfai_all\Stanfai_php/error_pages/500.html): Failed to open stream: No such file or directory in C:\Users\KLJyouth\Desktop\Stanfai_all\Stanfai_php\config.php on line 235

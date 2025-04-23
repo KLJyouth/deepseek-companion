@@ -1,5 +1,7 @@
 <?php
-namespace Services;
+namespace App\Services;
+
+use Redis;
 
 class CacheService {
     private $redis;

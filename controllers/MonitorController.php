@@ -1,8 +1,10 @@
 <?php
-namespace Controllers;
+namespace App\Controllers;
 
-use Services\TestMetricsService;
-use Services\TestReportService;
+use App\Services\TestMetricsService;
+use App\Services\TestReportService;
+use App\Services\ConnectionPoolMonitor;
+use PDO;
 
 class MonitorController
 {

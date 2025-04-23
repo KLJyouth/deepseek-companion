@@ -14,11 +14,14 @@ class Installer {
         'directories' => [
             'storage/' => ['perms' => 'rwx', 'check' => 'writable'],
             'cache/' => ['perms' => 'rw', 'check' => 'writable'],
-            'logs/' => ['perms' => 'rw', 'check' => 'writable']
+            'logs/' => ['perms' => 'rw', 'check' => 'writable'],
+            'public/uploads/' => ['perms' => 'rwx', 'check' => 'writable']
         ],
         'recommended' => [
             'opcache' => true,
-            'redis' => false
+            'redis' => false,
+            'supervisor' => false,
+            'nginx' => true
         ]
     ];
 
@@ -236,6 +239,35 @@ class Installer {
         echo "3. 运行 cronjob: php cron.php\n\n";
     }
 
+    private function createEnvFile(): void {
+        $this->step("创建环境配置文件");
+        
+        $envContent = <<<EOT
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY={$this->generateKey()}
+
+DB_HOST={$this->config['db']['host']}
+DB_DATABASE={$this->config['db']['name']}
+DB_USERNAME={$this->config['db']['user']}
+DB_PASSWORD={$this->config['db']['pass']}
+
+CACHE_DRIVER=file
+SESSION_DRIVER=file
+QUEUE_DRIVER=sync
+
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+EOT;
+        
+        file_put_contents('.env', $envContent);
+        $this->info("环境配置文件已创建");
+    }
+    
+    private function generateKey(): string {
+        return bin2hex(random_bytes(16));
+    }
+
     /* 辅助方法 */
     private function step(string $message): void {
         echo "\n\033[1;34m>>> {$message}\033[0m\n";
@@ -266,7 +298,7 @@ class Installer {
         }
         
         $answer = trim(fgets(STDIN));
-        return $answer !== '' ? $answer : $default;
+        return $answer !== '' ? $default;
     }
 
     private function confirm(string $question, bool $default = true): bool {

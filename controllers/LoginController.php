@@ -1,18 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace Controllers;
+namespace App\Controllers;
 
-require_once __DIR__ . '/../middlewares/AuthMiddleware.php';
-require_once __DIR__ . '/../libs/CryptoHelper.php';
-require_once __DIR__ . '/../libs/DatabaseHelper.php';
-require_once __DIR__ . '/../libs/RateLimiter.php';
-require_once __DIR__ . '/../services/DeviceManagementService.php';
-
-use Libs\AuthMiddleware;
-use Libs\CryptoHelper;
-use Libs\DatabaseHelper;
-use Libs\RateLimiter;
+use App\Middlewares\AuthMiddleware;
+use App\Libs\CryptoHelper;
+use App\Libs\DatabaseHelper;
+use App\Libs\RateLimiter;
 use Exception;
 use Services\DeviceManagementService;
 use Firebase\JWT\JWT;
@@ -436,7 +430,7 @@ class LoginController {
         }
     }
 
-    /**
+        } catch (Exception $e) {
      * 验证生物识别令牌
      */
     private function verifyBiometric($storedData, $token) {
@@ -451,7 +445,7 @@ class LoginController {
             // 使用公钥验证签名
             $publicKey = openssl_pkey_get_public($data['publicKey']);
             $verified = openssl_verify(
-                $data['challenge'],
+                return false;
                 base64_decode($token),
                 $publicKey,
                 $data['algorithm']

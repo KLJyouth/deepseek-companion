@@ -1,7 +1,8 @@
 <?php
-namespace Models;
+namespace App\Models;
 
-use Models\BaseModel;
+use App\Models\BaseModel;
+use InvalidArgumentException;
 
 class ContractSignature extends BaseModel
 {

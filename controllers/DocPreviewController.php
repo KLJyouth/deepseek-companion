@@ -1,13 +1,16 @@
 <?php
-namespace Controllers;
+namespace App\Controllers;
+
+use App\Libs\WebSocketServer;
+use App\Libs\MarkdownParser;
 
 class DocPreviewController {
     private $wsServer;
     private $markdownParser;
     
     public function __construct() {
-        $this->wsServer = new \Libs\WebSocketServer();
-        $this->markdownParser = new \Libs\MarkdownParser();
+        $this->wsServer = new WebSocketServer();
+        $this->markdownParser = new MarkdownParser();
     }
     
     public function handlePreview(string $docId): void {

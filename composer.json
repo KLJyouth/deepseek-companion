@@ -22,7 +22,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Services\\": "services/"
+            "App\\": "src/",
+            "App\\Controllers\\": "controllers/",
+            "App\\Models\\": "models/", 
+            "Services\\": "services/",
+            "App\\Middlewares\\": "middlewares/",
+            "App\\Traits\\": "traits/"
         }
     },
     "autoload-dev": {

@@ -1,5 +1,8 @@
 <?php
-namespace Services;
+namespace App\Services;
+
+use Redis;
+use Rubix\ML\Classifiers\DecisionTree;
 
 class AlertRuleMLService {
     private $redis;

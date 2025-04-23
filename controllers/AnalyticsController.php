@@ -1,10 +1,10 @@
 <?php
-namespace Controllers;
+namespace App\Controllers;
 
-use Libs\DatabaseHelper;
-use Services\AlertService;
-use Services\AdvancedAnalyticsService;
-use Services\MetricsAnalysisService;
+use App\Libs\DatabaseHelper;
+use App\Services\AlertService;
+use App\Services\AdvancedAnalyticsService;
+use App\Services\MetricsAnalysisService;
 
 /**
  * 分析控制器 - 负责处理系统性能分析和指标展示

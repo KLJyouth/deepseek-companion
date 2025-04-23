@@ -1,11 +1,8 @@
 <?php
-namespace Controllers;
+namespace App\Controllers;
 
-require_once __DIR__ . '/../libs/CryptoHelper.php';
-require_once __DIR__ . '/../libs/DatabaseHelper.php';
-
-use Libs\CryptoHelper;
-use Libs\DatabaseHelper;
+use App\Libs\CryptoHelper;
+use App\Libs\DatabaseHelper;
 use Exception;
 
 class WebSocketController {

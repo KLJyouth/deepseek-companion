@@ -1,5 +1,11 @@
 <?php
-require_once __DIR__.'/../services/SecurityService.php';
+namespace App\Controllers;
+
+use App\Services\SecurityService;
+use App\Services\AuditService;
+use App\Middlewares\AuthMiddleware;
+use App\Middlewares\RateLimitMiddleware;
+use Exception;
 
 class SecurityController 
 {
