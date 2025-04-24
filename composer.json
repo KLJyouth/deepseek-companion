@@ -13,9 +13,13 @@
         "php": ">=8.1",
         "ext-json": "*",
         "ext-redis": "*",
+        "endroid/qrcode": "^4.8",
+        "guzzlehttp/guzzle": "*",
         "monolog/monolog": "^2.8",
+        "phpunit/phpunit": "*",
+        "rubix/ml": "*",
         "symfony/process": "^6.4",
-        "endroid/qrcode": "^4.8"
+        "tecnickcom/tcpdf": "*"
     },
     "suggest": {
         "ext-posix": "在Linux环境中用于进程管理和安全控制"
@@ -48,5 +52,9 @@
     "config": {
         "preferred-install": "dist",
         "sort-packages": true
+    },
+    "require-dev": {
+        "fakerphp/faker": "*",
+        "phpstan/phpstan": "*"
     }
 }

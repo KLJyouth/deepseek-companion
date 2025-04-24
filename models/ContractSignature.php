@@ -1,66 +1,57 @@
 <?php
-namespace App\Models;
+namespace Models;
 
-use App\Models\BaseModel;
-use InvalidArgumentException;
+use Libs\Exception\SecurityException;
+use Libs\DatabaseHelper;
+use Libs\CryptoHelper;
 
-class ContractSignature extends BaseModel
-{
-    protected static string $table = 'ac_signatures';
+class ContractSignature extends BaseModel {
+    protected $table = 'contract_signatures';
     
-    /** @var array<string> 必填字段 */
-    protected array $required = ['contract_id', 'signer_id', 'signature_data'];
+    public $id;
+    public $contract_id;
+    public $user_id;
+    public $signature;
+    public $algorithm;
+    public $quantum_key_id;
+    public $sm9_params;
+    public $signed_at;
     
-    /** @var array<string,array<string,mixed>> 验证规则 */
-    protected array $rules = [
-        'contract_id' => ['type' => 'int'],
-        'signer_id' => ['type' => 'int'],
-        'signature_data' => ['type' => 'string', 'min' => 10],
-        'signed_at' => ['type' => 'string', 'optional' => true]
-    ];
-
-    /**
-     * 验证签名数据
-     * @param array<string,mixed> $data
-     * @throws \InvalidArgumentException
-     */
-    protected function validate(array $data): void
-    {
-        // 验证必填字段
-        foreach ($this->required as $field) {
-            if (!isset($data[$field])) {
-                throw new \InvalidArgumentException("Missing required field: {$field}");
-            }
+    public function contract(): ?Contract {
+        return Contract::find($this->contract_id);
+    }
+    
+    public function user(): ?User {
+        return User::find($this->user_id);
+    }
+    
+    public static function validateSignatureData(array $data): void {
+        if (empty($data['contract_id'])) {
+            throw new SecurityException('合同ID不能为空');
         }
         
-        // 验证数据类型
-        foreach ($data as $field => $value) {
-            if (isset($this->rules[$field])) {
-                $rule = $this->rules[$field];
-                if ($rule['type'] === 'int' && !is_int($value)) {
-                    throw new \InvalidArgumentException("Field {$field} must be integer");
-                }
-                if ($rule['type'] === 'string' && !is_string($value)) {
-                    throw new \InvalidArgumentException("Field {$field} must be string");
-                }
-                if ($rule['type'] === 'string' && isset($rule['min']) && strlen($value) < $rule['min']) {
-                    throw new \InvalidArgumentException("Field {$field} too short");
-                }
-            }
+        if (empty($data['user_id'])) {
+            throw new SecurityException('用户ID不能为空');
+        }
+        
+        if (empty($data['signature'])) {
+            throw new SecurityException('签名数据不能为空');
         }
     }
-
-    /**
-     * 根据合同ID查找签名信息
-     * @param int $contractId 合同ID
-     * @return array<int,array<string,mixed>> 签名信息数组
-     */
-    public static function findByContract(int $contractId): array
-    {
-        $instance = new static();
-        return $instance->db->getRows(
-            "SELECT * FROM " . static::$table . " WHERE contract_id = ?",
-            [$contractId]
+    
+    public function getEncryptedSignature(): string {
+        return DatabaseHelper::getInstance()->getValue(
+            "SELECT signature FROM {$this->table} WHERE id = ?",
+            [$this->id]
         );
+    }
+    
+    public function decryptSignature(CryptoHelper $crypto): string {
+        $encrypted = $this->getEncryptedSignature();
+        return $crypto->decrypt($encrypted);
+    }
+    
+    public function encryptSignature(CryptoHelper $crypto): void {
+        $this->signature = $crypto->encrypt($this->signature);
     }
 }

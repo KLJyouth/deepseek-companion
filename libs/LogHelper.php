@@ -1,70 +1,50 @@
 <?php
 namespace Libs;
 
-class LogHelper
-{
-    private static $instance;
+class LogHelper {
+    private static $instance = null;
     private $logFile;
-    private $auditFile;
-
-    private function __construct()
-    {
-        $this->logFile = __DIR__ . '/../storage/logs/app.log';
-        $this->auditFile = __DIR__ . '/../storage/logs/audit.log';
+    
+    private function __construct() {
+        $this->logFile = __DIR__ . '/../logs/app.log';
     }
-
-    public static function getInstance(): self
-    {
-        if (!self::$instance) {
+    
+    public static function getInstance(): self {
+        if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
-
-    /**
-     * 记录信息日志
-     * @param string $message
-     * @param array $context
-     */
-    public function info(string $message, array $context = [])
-    {
+    
+    public function info(string $message, array $context = []): void {
         $this->log('INFO', $message, $context);
     }
-
-    /**
-     * 记录错误日志
-     * @param string $message
-     * @param array $context
-     */
-    public function error(string $message, array $context = [])
-    {
+    
+    public function error(string $message, array $context = []): void {
         $this->log('ERROR', $message, $context);
     }
-
-    /**
-     * 记录审计日志
-     * @param string $action
-     * @param array $context
-     */
-    public function audit(string $action, array $context = [])
-    {
-        $date = date('Y-m-d H:i:s');
-        $contextStr = !empty($context) ? json_encode($context, JSON_UNESCAPED_UNICODE) : '';
-        $logMessage = "[{$date}] AUDIT: {$action} {$contextStr}\n";
-        error_log($logMessage, 3, $this->auditFile);
+    
+    public function critical(string $message, array $context = []): void {
+        $this->log('CRITICAL', $message, $context);
     }
-
-    /**
-     * 写入日志
-     * @param string $level
-     * @param string $message
-     * @param array $context
-     */
-    private function log(string $level, string $message, array $context = [])
-    {
+    
+    public static function logCritical(string $message, array $context = []): void {
+        self::getInstance()->critical($message, $context);
+    }
+    
+    public static function logError(string $message, array $context = []): void {
+        self::getInstance()->error($message, $context);
+    }
+    
+    private function log(string $level, string $message, array $context = []): void {
         $date = date('Y-m-d H:i:s');
-        $contextStr = !empty($context) ? json_encode($context, JSON_UNESCAPED_UNICODE) : '';
-        $logMessage = "[{$date}] {$level}: {$message} {$contextStr}\n";
-        error_log($logMessage, 3, $this->logFile);
+        $contextStr = !empty($context) ? json_encode($context) : '';
+        $logMessage = "[$date] [$level] $message $contextStr\n";
+        
+        if (!is_dir(dirname($this->logFile))) {
+            mkdir(dirname($this->logFile), 0777, true);
+        }
+        
+        file_put_contents($this->logFile, $logMessage, FILE_APPEND);
     }
 }

@@ -64,19 +64,4 @@ class BlockchainMiddleware {
             ]
         ];
     }
-
-                if ($blockchainResponse->failed()) {
-                    Log::error('长安链存证失败', [
-                    'error' => $blockchainResponse->getError(),
-                    'tx_id' => $blockchainResponse->getTxId(),
-                    'chain_id' => env('CHAINMAKER_CHAIN_ID')
-                ]);
-                }
-            } catch (Exception $e) {
-                Log::error('存证流程异常', ['error' => $e->getMessage()]);
-            }
-        }
-
-        return $response;
-    }
 }

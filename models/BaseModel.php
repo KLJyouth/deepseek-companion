@@ -1,63 +1,105 @@
 <?php
-namespace App\Models;
+namespace Models;
 
-use App\Libs\DatabaseHelper;
-use App\Libs\LogHelper;
+use Libs\DatabaseHelper;
+use Libs\LogHelper;
 
-abstract class BaseModel
-{
-    protected static string $table;
-    protected static string $primaryKey = 'id';
-    protected DatabaseHelper $db;
-    protected LogHelper $logger;
-    protected array $attributes = [];
+abstract class BaseModel {
+    protected static $db;
+    protected static $logger;
     
-    public function __construct()
-    {
-        $this->db = DatabaseHelper::getInstance();
-        $this->logger = LogHelper::getInstance();
+    protected $table;
+    protected $primaryKey = 'id';
+    
+    public static function init(DatabaseHelper $db, LogHelper $logger): void {
+        self::$db = $db;
+        self::$logger = $logger;
     }
-
-    /**
-     * 通过ID查找记录
-     * @param int|string $id
-     * @return static|null
-     */
-    public static function find(int|string $id): ?static 
-    {
-        $instance = new static();
-        $rows = $instance->db->getRows(
-            "SELECT * FROM " . static::$table . " WHERE " . static::$primaryKey . " = ?",
+    
+    public static function getInstance(): DatabaseHelper {
+        return self::$db;
+    }
+    
+    public static function find(int $id): ?self {
+        $model = new static();
+        $result = self::$db->getRow(
+            "SELECT * FROM {$model->table} WHERE {$model->primaryKey} = ?",
             [$id]
         );
-        
-        if (!empty($rows)) {
-            $instance->attributes = $rows[0];
-            return $instance;
+        return $result ? $model->fill($result) : null;
+    }
+    
+    public static function where(string $column, $value): array {
+        $model = new static();
+        $rows = self::$db->getRows(
+            "SELECT * FROM {$model->table} WHERE {$column} = ?",
+            [$value]
+        );
+        return array_map([$model, 'fill'], $rows);
+    }
+    
+    public static function whereIn(string $column, array $values): array {
+        $model = new static();
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $rows = self::$db->getRows(
+            "SELECT * FROM {$model->table} WHERE {$column} IN ($placeholders)",
+            $values
+        );
+        return array_map([$model, 'fill'], $rows);
+    }
+    
+    public function fill(array $data): self {
+        foreach ($data as $key => $value) {
+            if (property_exists($this, $key)) {
+                $this->$key = $value;
+            }
         }
-        return null;
+        return $this;
     }
-
-    /**
-     * 创建新记录
-     * @param array<string,mixed> $data
-     * @return int
-     */
-    public static function create(array $data): int
-    {
-        $instance = new static();
-        $instance->validate($data);
+    
+    public function save(): bool {
+        $data = $this->toArray();
         
-        $id = $instance->db->insert(static::$table, $data);
-        $instance->logger->info("Created " . static::$table . " record: {$id}");
+        if (empty($data[$this->primaryKey])) {
+            $id = self::$db->insert($this->table, $data);
+            if ($id) {
+                $this->{$this->primaryKey} = $id;
+                return true;
+            }
+        } else {
+            return self::$db->update(
+                $this->table,
+                $data,
+                [$this->primaryKey => $data[$this->primaryKey]]
+            ) > 0;
+        }
         
-        return $id;
+        return false;
     }
-
-    /**
-     * 验证数据
-     * @param array<string,mixed> $data
-     * @throws \InvalidArgumentException
-     */
-    abstract protected function validate(array $data): void;
+    
+    public function toArray(): array {
+        $data = [];
+        foreach (get_object_vars($this) as $key => $value) {
+            if ($key !== 'table' && $key !== 'primaryKey') {
+                $data[$key] = $value;
+            }
+        }
+        return $data;
+    }
+    
+    public static function all(): array {
+        $model = new static();
+        $rows = self::$db->getRows("SELECT * FROM {$model->table}");
+        return array_map([$model, 'fill'], $rows);
+    }
+    
+    public function delete(): bool {
+        if (!empty($this->{$this->primaryKey})) {
+            return self::$db->delete(
+                $this->table,
+                [$this->primaryKey => $this->{$this->primaryKey}]
+            ) > 0;
+        }
+        return false;
+    }
 }

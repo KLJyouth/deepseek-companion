@@ -1,62 +1,54 @@
 <?php
-namespace App\Models;
+namespace Models;
 
-use App\Traits\InputValidation;
-use App\Models\BaseModel;
-use App\Models\ContractSignature;
-use InvalidArgumentException;
-use RuntimeException;
+use Libs\Exception\SecurityException;
+use Libs\DatabaseHelper;
+use Libs\CryptoHelper;
 
-class Contract extends BaseModel
-{
-    use InputValidation;
-
-    protected static string $table = 'ac_contracts';
+class Contract extends BaseModel {
+    protected $table = 'contracts';
     
-    /** @var array<string,string> 必填字段 */
-    protected array $required = ['title', 'content', 'parties'];
+    public $id;
+    public $title;
+    public $content;
+    public $created_by;
+    public $status;
+    public $created_at;
+    public $updated_at;
+    public $blockchain_txid;
+    public $blockchain_timestamp;
     
-    /** 
-     * @var array<string,array<string,mixed>> 字段验证规则
-     */
-    protected array $rules = [
-        'title' => ['type' => 'string', 'max' => 255],
-        'content' => ['type' => 'string', 'min' => 10],
-        'parties' => ['type' => 'array'],
-        'status' => ['type' => 'string', 'enum' => ['draft', 'signed', 'completed']]
-    ];
-
-    /**
-     * 验证合同数据
-     * @param array<string,mixed> $data 合同数据
-     * @throws \InvalidArgumentException 当数据验证失败时
-     */
-    protected function validate(array $data): void
-    {
-        $this->validateRequired($data);
-        $this->validateRules($data);
+    public function parties(): array {
+        return ContractParty::where('contract_id', $this->id);
     }
-
-    /**
-     * 获取合同签名信息
-     * @return array<int,array<string,mixed>> 签名信息数组
-     * @throws \RuntimeException 当查询失败时
-     */
-    public function signatures(): array
-    {
-        if (!isset($this->attributes['id'])) {
-            throw new \RuntimeException('Contract ID is not set');
+    
+    public function signatures(): array {
+        return ContractSignature::where('contract_id', $this->id);
+    }
+    
+    public static function validateContractData(array $data): void {
+        if (empty($data['title'])) {
+            throw new SecurityException('合同标题不能为空');
         }
-        return ContractSignature::findByContract($this->attributes['id']);
+        
+        if (empty($data['content'])) {
+            throw new SecurityException('合同内容不能为空');
+        }
     }
-
-    /**
-     * 检查合同是否已过期
-     * @return bool 是否过期
-     */
-    public function isExpired(): bool
-    {
-        return isset($this->attributes['expire_at']) && 
-               strtotime($this->attributes['expire_at']) < time();
+    
+    public function getEncryptedContent(): string {
+        return DatabaseHelper::getInstance()->getValue(
+            "SELECT content FROM {$this->table} WHERE id = ?",
+            [$this->id]
+        );
+    }
+    
+    public function decryptContent(CryptoHelper $crypto): string {
+        $encrypted = $this->getEncryptedContent();
+        return $crypto->decrypt($encrypted);
+    }
+    
+    public function encryptContent(CryptoHelper $crypto): void {
+        $this->content = $crypto->encrypt($this->content);
     }
 }

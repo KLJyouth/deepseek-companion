@@ -3,84 +3,109 @@ namespace Tests;
 
 use PHPUnit\Framework\TestCase;
 use Services\ContractService;
+use Libs\DatabaseHelper;
+use Services\CacheService;
+use Libs\CryptoHelper;
+use DeepSeek\Security\Quantum\QuantumKeyManager;
 use Models\Contract;
+use Libs\Exception\SecurityException;
 
-class ContractServiceTest extends TestCase
-{
+class ContractServiceTest extends TestCase {
     private $contractService;
-    private $db;
-    private $cache;
-
-    protected function setUp(): void
-    {
-        $this->db = $this->createMock(\Libs\DatabaseHelper::class);
-        $this->cache = $this->createMock(\Services\CacheService::class);
-        $this->contractService = new ContractService($this->db, $this->cache);
+    private $dbMock;
+    private $cacheMock;
+    private $cryptoMock;
+    private $keyManagerMock;
+    
+    protected function setUp(): void {
+        $this->dbMock = $this->createMock(DatabaseHelper::class);
+        $this->cacheMock = $this->createMock(CacheService::class);
+        $this->cryptoMock = $this->createMock(CryptoHelper::class);
+        $this->keyManagerMock = $this->createMock(QuantumKeyManager::class);
+        
+        $this->contractService = new ContractService(
+            $this->dbMock,
+            $this->cacheMock,
+            $this->cryptoMock,
+            $this->keyManagerMock
+        );
     }
-
-    public function testCreateContract(): void
-    {
-        $data = [
-            'title' => 'Test Contract',
-            'content' => 'Test content',
-            'parties' => ['1', '2']
-        ];
-
-        $this->db->expects($this->once())
-            ->method('transaction')
-            ->willReturnCallback(function($callback) {
-                return $callback($this->db);
-            });
-
-        $this->db->expects($this->once())
-            ->method('insert')
-            ->with('contracts', $data)
+    
+    public function testCreateContractSuccess(): void {
+        $this->dbMock->method('insert')
             ->willReturn(1);
-
-        $this->cache->expects($this->once())
-            ->method('delete')
-            ->with('contracts:list');
-
-        $id = $this->contractService->createContract($data);
-        $this->assertEquals(1, $id);
+        
+        $contract = $this->contractService->createContract([
+            'title' => 'Test Contract',
+            'content' => 'Contract content',
+            'created_by' => 1
+        ]);
+        
+        $this->assertInstanceOf(Contract::class, $contract);
+        $this->assertEquals(1, $contract->id);
     }
-
-    public function testGetContractWithCache(): void
-    {
-        $contractData = [
-            'id' => 1,
-            'title' => 'Cached Contract'
-        ];
-
-        $this->cache->expects($this->once())
-            ->method('remember')
-            ->with(
-                'contract:1',
-                $this->callback(function($callback) use ($contractData) {
-                    return $callback() === $contractData;
-                }),
-                3600
-            )
-            ->willReturn($contractData);
-
-        $contract = $this->contractService->getContract(1);
-        $this->assertEquals($contractData, $contract);
+    
+    public function testCreateContractMissingTitle(): void {
+        $this->expectException(SecurityException::class);
+        $this->expectExceptionMessage('合同标题不能为空');
+        
+        $this->contractService->createContract([
+            'content' => 'Contract content',
+            'created_by' => 1
+        ]);
     }
-
-    public function testCheckContractCompliance(): void
-    {
-        $contract = [
-            'id' => 1,
-            'content' => 'Valid contract content'
-        ];
-
-        $this->cache->expects($this->once())
-            ->method('get')
-            ->with('contract:1')
-            ->willReturn($contract);
-
-        $result = $this->contractService->checkContractCompliance(1);
-        $this->assertArrayHasKey('overall_compliance', $result);
-        $this->assertTrue($result['overall_compliance']);
+    
+    public function testSignContractSuccess(): void {
+        $this->dbMock->method('getRow')
+            ->willReturn(['id' => 1]);
+        
+        $this->keyManagerMock->method('getCurrentKeyId')
+            ->willReturn('quantum-key-123');
+        
+        $this->keyManagerMock->method('getMasterPublicKey')
+            ->willReturn('public-key-123');
+        
+        $this->keyManagerMock->method('getKeyExpiration')
+            ->willReturn(date('Y-m-d H:i:s', strtotime('+1 year')));
+        
+        $result = $this->contractService->signContract(
+            1, 
+            1, 
+            'signature-data', 
+            'SM9'
+        );
+        
+        $this->assertArrayHasKey('contract_id', $result);
+        $this->assertArrayHasKey('signature_id', $result);
+        $this->assertArrayHasKey('signed_at', $result);
+    }
+    
+    public function testSignContractNotFound(): void {
+        $this->expectException(SecurityException::class);
+        $this->expectExceptionMessage('合同不存在');
+        
+        $this->dbMock->method('getRow')
+            ->willReturn(null);
+        
+        $this->contractService->signContract(
+            999, 
+            1, 
+            'signature-data', 
+            'SM9'
+        );
+    }
+    
+    public function testValidateContractDataSuccess(): void {
+        $this->expectNotToPerformAssertions();
+        
+        $reflection = new \ReflectionClass($this->contractService);
+        $method = $reflection->getMethod('validateContractData');
+        $method->setAccessible(true);
+        
+        $method->invokeArgs($this->contractService, [[
+            'title' => 'Valid Title',
+            'content' => 'Valid Content',
+            'created_by' => 1
+        ]]);
     }
 }
