@@ -47,6 +47,27 @@ Route::middleware(['auth', PathValidationMiddleware::class])->group(function () 
     });
 });
 
+// 法律知识图谱和合同比对路由
+Route::middleware(['auth', PathValidationMiddleware::class])->prefix('legal')->group(function () {
+    // 知识图谱相关
+    Route::post('/build-knowledge-graph', [App\Http\Controllers\LegalKnowledgeController::class, 'buildKnowledgeGraph'])->name('legal.build-knowledge-graph');
+    Route::post('/find-related-entities', [App\Http\Controllers\LegalKnowledgeController::class, 'findRelatedEntities'])->name('legal.find-related-entities');
+    Route::post('/find-shortest-path', [App\Http\Controllers\LegalKnowledgeController::class, 'findShortestPath'])->name('legal.find-shortest-path');
+    Route::post('/calculate-entity-centrality', [App\Http\Controllers\LegalKnowledgeController::class, 'calculateEntityCentrality'])->name('legal.calculate-entity-centrality');
+    
+    // 合同比对相关
+    Route::post('/compare-contracts', [App\Http\Controllers\LegalKnowledgeController::class, 'compareContracts'])->name('legal.compare-contracts');
+    Route::post('/merge-comparison-graph', [App\Http\Controllers\LegalKnowledgeController::class, 'mergeComparisonWithGraph'])->name('legal.merge-comparison-graph');
+    Route::get('/comparison-visualization/{id}', [App\Http\Controllers\LegalKnowledgeController::class, 'getComparisonVisualization'])->name('legal.comparison-visualization');
+    Route::post('/highlight-differences', [App\Http\Controllers\LegalKnowledgeController::class, 'highlightDifferences'])->name('legal.highlight-differences');
+    
+    // 合同风险分析
+    Route::post('/analyze-contract-risk', [App\Http\Controllers\LegalKnowledgeController::class, 'analyzeContractRisk'])->name('legal.analyze-contract-risk');
+});
+
+// 引入合同风险分析路由
+require __DIR__ . '/contract-risk-analysis.php';
+
 // 其他业务路由...
 Route::fallback(function () {
     return view('errors.404');

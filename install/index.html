@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统安装向导</title>
+    <link rel="stylesheet" href="css/install.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>系统安装向导</h1>
+            <div class="progress-steps">
+                <div class="step active" data-step="1">许可协议</div>
+                <div class="step" data-step="2">环境检测</div>
+                <div class="step" data-step="3">系统配置</div>
+                <div class="step" data-step="4">安装进度</div>
+                <div class="step" data-step="5">完成</div>
+            </div>
+        </header>
+
+        <main>
+            <!-- 步骤1: 许可协议 -->
+            <div class="step-content active" id="step1">
+                <h2>许可协议</h2>
+                <div class="license-content">
+                    <!-- 这里放置许可协议内容 -->
+                    <p>请仔细阅读以下许可协议...</p>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="agree"> 我同意上述许可协议
+                    </label>
+                </div>
+                <div class="button-group">
+                    <button class="btn-next" disabled>下一步</button>
+                </div>
+            </div>
+
+            <!-- 步骤2: 环境检测 -->
+            <div class="step-content" id="step2">
+                <h2>环境检测</h2>
+                <div class="env-check-results">
+                    <p>正在检测系统环境，请稍候...</p>
+                    <div id="envResults"></div>
+                </div>
+                <div class="button-group">
+                    <button class="btn-prev">上一步</button>
+                    <button class="btn-next" disabled>下一步</button>
+                </div>
+            </div>
+
+            <!-- 步骤3: 系统配置 -->
+            <div class="step-content" id="step3">
+                <h2>系统配置</h2>
+                <form id="configForm">
+                    <div class="form-group">
+                        <label for="dbHost">数据库主机</label>
+                        <input type="text" id="dbHost" value="localhost" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dbName">数据库名</label>
+                        <input type="text" id="dbName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dbUser">数据库用户名</label>
+                        <input type="text" id="dbUser" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dbPass">数据库密码</label>
+                        <input type="password" id="dbPass">
+                    </div>
+                    <div class="form-group">
+                        <label for="adminUser">管理员账号</label>
+                        <input type="text" id="adminUser" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPass">管理员密码</label>
+                        <input type="password" id="adminPass" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminEmail">管理员邮箱</label>
+                        <input type="email" id="adminEmail" required>
+                    </div>
+                </form>
+                <div class="button-group">
+                    <button class="btn-prev">上一步</button>
+                    <button class="btn-next" disabled>下一步</button>
+                </div>
+            </div>
+
+            <!-- 步骤4: 安装进度 -->
+            <div class="step-content" id="step4">
+                <h2>安装进度</h2>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text">0%</div>
+                </div>
+                <div id="installLog"></div>
+                <div class="button-group">
+                    <button class="btn-prev" disabled>上一步</button>
+                    <button class="btn-next" disabled>正在安装...</button>
+                </div>
+            </div>
+
+            <!-- 步骤5: 完成 -->
+            <div class="step-content" id="step5">
+                <h2>安装完成</h2>
+                <div class="success-message">
+                    <p>系统已成功安装！</p>
+                    <p>您现在可以访问后台管理系统。</p>
+                </div>
+                <div class="button-group">
+                    <a href="../admin/" class="btn-finish">进入后台</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/install.js"></script>
+</body>
+</html>
