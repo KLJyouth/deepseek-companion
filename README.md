@@ -5,7 +5,7 @@
 ![Security](https://img.shields.io/badge/Security-Quantum%20Safe-green)
 
 **企业级合同管理与电子签约解决方案**  
-**版本**：2.4 | **最后更新**：2023-12-01
+**版本**：2.5 | **最后更新**：2025-04-25
 
 ## ✨ 核心价值
 
